@@ -11,6 +11,13 @@
 #include <sstream>
 #include <vector>
 
+#ifdef WIN32
+#define DATA_PATH "../data/uniprot.tsv"
+#else
+#define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/uniprot.tsv"
+#endif
+
+
 #include <map>
 
 #define BUFFER_SIZE 128000
@@ -26,7 +33,7 @@ int main(int argc, const char * argv[])
 	}
 
 	// read column names:
-	std::ifstream I("../data/uniprot.tsv");
+	std::ifstream I(DATA_PATH);
 	if (!I.is_open())
 	{
 		std::cout << "Cannot find file \"uniprot.tsv\"" << std::endl;
@@ -42,10 +49,8 @@ int main(int argc, const char * argv[])
 		I.getline(rowBuffer, BUFFER_SIZE, '\n');
 		if (strlen(rowBuffer) == 0)
 			break;
-		std::stringstream s_rowBuffer(rowBuffer);
 
-		if (rowIndex % 54000 == 0)
-			std::cout << rowBuffer << std::endl;
+		std::stringstream s_rowBuffer(rowBuffer);
 
 		for (int colIndex = 0; !s_rowBuffer.eof(); colIndex++)
 		{
@@ -54,7 +59,7 @@ int main(int argc, const char * argv[])
 			//std::cout << cellBuffer << "\t";
 		}
 		//std::cout << std::endl;
-		if (rowIndex % 540000 == 0)
+		if (rowIndex % 54000 == 0)
 			std::cout << "read " << rowIndex << " rows." << std::endl;
 
 	}
