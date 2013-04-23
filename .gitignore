@@ -19,3 +19,11 @@
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
+
+# XCode files
+*.xcodeproj
+.DS_Store
+exercise1/Exercise1/
+exercise2/Exercise2/
+exercise3/Exercise3/
+exercise4/Exercise4/
