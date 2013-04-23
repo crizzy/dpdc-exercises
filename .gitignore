@@ -19,6 +19,10 @@
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
+exercise1/Exercise1Win/
+exercise2/Exercise2Win/
+exercise3/Exercise3Win/
+exercise4/Exercise4Win/
 
 # XCode files
 *.xcodeproj
