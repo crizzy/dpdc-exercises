@@ -95,15 +95,16 @@ int readColumnsFromFile()
     
 	std::string buffer;
 	std::string elementBuffer;
+	std::map<std::string, int>::iterator dictionaryEntry;
+	int rowIndex = 0;
+
+	std::cout << "Reading file \"" << DATA_PATH << "\" into RAM..." << std::endl;
     
-	for (int rowIndex = 0; !dataFile.eof(); rowIndex++)
+	while (!dataFile.eof())
 	{
 		// Read a whole line into the buffer:   
 		std::getline(dataFile, buffer, '\n');
 		std::stringstream line(buffer);
-
-		if (buffer.empty())
-			break;
         
 		for (int colIndex = 0; !line.eof(); colIndex++)
 		{
@@ -112,7 +113,7 @@ int readColumnsFromFile()
 
 			std::getline(line, elementBuffer, '\t');
 
-			std::map<std::string, int>::iterator dictionaryEntry = dictionary.find(elementBuffer);
+			dictionaryEntry = dictionary.find(elementBuffer);
 			if (dictionaryEntry == dictionary.end())
 			{
 				// element was not found in dictionary
@@ -122,13 +123,15 @@ int readColumnsFromFile()
 			else
 			{
 				// element already exists in dictionary
-				g_columns.at(colIndex).push_back(dictionary[elementBuffer]);
+				g_columns.at(colIndex).push_back(dictionaryEntry->second);
 			}
 		}
 
-        if (rowIndex % 50000 == 0)
-        	std::cout << "Read " << rowIndex << " rows. Distinct values so far: " << distinctValues << std::endl;
+        if ((++rowIndex) % 50000 == 0)
+        	std::cout << "Read " << (rowIndex) << " rows. Distinct values so far: " << distinctValues << std::endl;
 	}
+
+	std::cout << "Finished reading " << (rowIndex-1) << " rows. Total distinct values: " << distinctValues << std::endl;
 
     return 0;
 }
@@ -162,6 +165,7 @@ ColumnCombination findNextCombination() //Crizzy
     // considers cost
     //if isCombinationExpensive()
     //    continue;
+	return ColumnCombination();
 }
 
 int main(int argc, const char * argv[])
