@@ -23,6 +23,7 @@
 
 #include <map>
 
+#define COLS 223
 #define BUFFER_SIZE 128000
 
 typedef std::vector<std::string> ColumnVector;
@@ -31,25 +32,48 @@ typedef std::vector<std::string> ColumnVector;
 std::vector<ColumnVector> columns;
 
 
-bool isUniqueColumnCombination(std::vector<int> &combination)
-{//TODO make it work
-    
-//    for (int i = 0; i < combination.size(); i++)
-//    {
-//        columns[combination.at(i)];
-//    }
-    
-    size_t sizeBefore = columns[combination.at(0)].size();
-    std::vector<std::string> column = columns[combination.at(0)];
-    
-    ColumnVector::iterator it = std::unique(columns[combination.at(0)].begin(), //TODO: do this for multiple columns
-                                         columns[combination.at(0)].end());
-    size_t sizeAfter = it - columns[combination.at(0)].begin();
+
+bool checkUniquenessFor1Column(std::vector<std::string> &column)
+{
+    size_t sizeBefore = column.size();
+    ColumnVector::iterator it = std::unique(column.begin(), //TODO: do this for multiple columns
+                                            column.end());  //TODO: end early as soon as two rows are the same -> not done by unique
+    size_t sizeAfter = it - column.begin();
     
     if (sizeAfter == sizeBefore)
         return true;
-    
     return false;
+}
+
+//TODO encode NULL with steuerzeichen
+bool isUniqueColumnCombination(std::vector<int> &combination)
+{//TODO make it work
+    
+    //print out what we are looking for
+    std::cout << "looking for a UCC in the combination {";
+    for (int i = 0; i< combination.size() - 1; i++)
+        std::cout << combination[i] << ", ";
+    std::cout << *(combination.end()-1) << "}" << std::endl;
+    
+    if (combination.size() > 1)
+    {
+        std::vector<std::string> vec_stichedColumn;
+        for (int rowIndex = 0; rowIndex < columns[0].size(); rowIndex++)
+        {
+            std::stringstream sstr_stichedColumn(columns[combination.at(0)].at(rowIndex));
+            for (int i = 1; i < combination.size(); i++)
+                sstr_stichedColumn << "/t" << columns[combination.at(i)].at(rowIndex);
+            vec_stichedColumn.push_back(sstr_stichedColumn.str());
+        }
+        return checkUniquenessFor1Column(vec_stichedColumn);
+        
+    }
+    else
+    {
+        std::vector<std::string> &column = columns[combination[0]];
+        return checkUniquenessFor1Column(column);
+        //TODO {1, 2} sind noch false
+    }
 }
 
 
@@ -57,7 +81,7 @@ bool isUniqueColumnCombination(std::vector<int> &combination)
 
 int readColumnsFromFile()
 {
-	for (int i = 0; i<223; i++)
+	for (int i = 0; i<COLS; i++)
 	{
 		columns.push_back(ColumnVector());
 	}
@@ -89,11 +113,11 @@ int readColumnsFromFile()
 			std::cout << cellBuffer << "\t";
 		}
 		std::cout << std::endl;
-//		if (rowIndex % 54000 == 0)
-//			std::cout << "read " << rowIndex << " rows." << std::endl;
+        //		if (rowIndex % 54000 == 0)
+        //			std::cout << "read " << rowIndex << " rows." << std::endl;
 	}
     
-		
+    
     
     return 0;
 }
@@ -104,14 +128,14 @@ int main(int argc, const char * argv[])
     readColumnsFromFile();
     
     // check if read correctly
-//    for(ColumnVector::iterator it = columns[0].begin(); it != columns[0].end();it++)
-//    {
-//        std::cout << *it<<std::endl;
-//    }
+    //    for(ColumnVector::iterator it = columns[0].begin(); it != columns[0].end();it++)
+    //    {
+    //        std::cout << *it<<std::endl;
+    //    }
     
     
     // unique column combinations
-    std::vector<int> combination = {3};
+    std::vector<int> combination = {1,2};
     
     isUniqueColumnCombination(combination) ?
     std::cout <<"true" << std::endl:
