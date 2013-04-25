@@ -23,15 +23,17 @@
 #endif
 
 
-
-
 #define COLS 223
 #define BUFFER_SIZE 128000
 
+
 typedef std::vector<int> ColumnVector;
+typedef std::vector<int> ColumnCombination;
 
 // global vars
-std::vector<ColumnVector> columns;
+std::vector<ColumnVector> g_columns;
+std::map<int, ColumnCombination> g_costs;
+
 
 
 
@@ -60,11 +62,11 @@ bool isUniqueColumnCombination(std::vector<int> &combination)
     if (combination.size() > 1)
     {
         std::vector<std::string> vec_stichedColumn;
-        for (int rowIndex = 0; rowIndex < columns[0].size(); rowIndex++)
+        for (int rowIndex = 0; rowIndex < g_columns[0].size(); rowIndex++)
         {
-            std::stringstream sstr_stichedColumn(columns[combination.at(0)].at(rowIndex));
+            std::stringstream sstr_stichedColumn(g_columns[combination.at(0)].at(rowIndex));
             for (int i = 1; i < combination.size(); i++)
-                sstr_stichedColumn << "/t" << columns[combination.at(i)].at(rowIndex);
+                sstr_stichedColumn << "/t" << g_columns[combination.at(i)].at(rowIndex);
             vec_stichedColumn.push_back(sstr_stichedColumn.str());
         }
         return checkUniquenessFor1Column(vec_stichedColumn);
@@ -72,7 +74,7 @@ bool isUniqueColumnCombination(std::vector<int> &combination)
     }
     else
     {
-        std::vector<std::string> &column = columns[combination[0]];
+        std::vector<std::string> &column = g_columns[combination[0]];
         return checkUniquenessFor1Column(column);
         //TODO {1, 2} sind noch false
     }
@@ -109,7 +111,7 @@ int readColumnsFromFile()
 		for (int colIndex = 0; !s_rowBuffer.eof(); colIndex++)
 		{
 			if (rowIndex == 0)
-				columns.push_back(ColumnVector());
+				g_columns.push_back(ColumnVector());
 
 			s_rowBuffer.getline(cellBuffer, BUFFER_SIZE, '\t');
 
@@ -118,12 +120,12 @@ int readColumnsFromFile()
 			{
 				// element was not found in dictionary
 				dictionary[cellBuffer] = distinctValues;
-				columns.at(colIndex).push_back(distinctValues++);
+				g_columns.at(colIndex).push_back(distinctValues++);
 			}
 			else
 			{
 				// element already exists in dictionary
-				columns.at(colIndex).push_back(dictionary[cellBuffer]);
+				g_columns.at(colIndex).push_back(dictionary[cellBuffer]);
 			}
 
 			//std::cout << cellBuffer << "\t";
@@ -140,16 +142,33 @@ int readColumnsFromFile()
 
 void printTable()
 {
-	int rowCount = columns.at(0).size();
-	int colCount = columns.size();
+	int rowCount = g_columns.at(0).size();
+	int colCount = g_columns.size();
 	for (int row = 0; row < rowCount; row++)
 	{
 		for (int col = 0; col < colCount; col++)
 		{
-			std::cout << columns[col][row] << "\t";
+			std::cout << g_columns[col][row] << "\t";
 		}
 		std::cout << std::endl;
 	}
+}
+
+
+std::vector<std::vector<int>> isUniqueColumnCombinationPLI(ColumnCombination &combination) // Markus
+{
+    //if result vector is empty than it was unique
+    return vector;
+}
+
+ColumnCombination findNextCombination() //Crizzy
+{
+    
+    
+    
+    // considers cost
+    if isCombinationExpensive()
+        continue;
 }
 
 int main(int argc, const char * argv[])
@@ -158,11 +177,29 @@ int main(int argc, const char * argv[])
     readColumnsFromFile();
     
     // check if read correctly
-    //    for(ColumnVector::iterator it = columns[0].begin(); it != columns[0].end();it++)
+    //    for(ColumnVector::iterator it = g_columns[0].begin(); it != g_columns[0].end();it++)
     //    {
     //        std::cout << *it<<std::endl;
     //    }
+
+        
+    for (int i = 0; i < g_columns.size(); i++)
+    {
+        ColumnCombination combination;
+        combination.push_back(i);
+        std::vector<std::vector<int>> &g_costs = isUniqueColumnCombinationPLI(combination);
+        
+        //remember the return values= g_costs
+        
+    }
     
+    
+    while (true)
+    {
+        ColumnCombination findNextCombination();
+        
+       
+    }
     
     // unique column combinations
     std::vector<int> combination;
