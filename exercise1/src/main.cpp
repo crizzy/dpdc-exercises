@@ -23,9 +23,6 @@
 #endif
 
 
-#define COLS 223
-#define BUFFER_SIZE 128000
-
 
 typedef std::vector<int> ColumnVector;
 typedef std::vector<int> ColumnCombination;
@@ -89,54 +86,50 @@ int readColumnsFromFile()
 	unsigned int distinctValues = 0;
     
 	// read column names:
-	std::ifstream I(DATA_PATH);
-	if (!I.is_open())
+	std::ifstream dataFile(DATA_PATH);
+	if (!dataFile.is_open())
 	{
 		std::cout << "Cannot find file \"" << DATA_PATH << "\"" << std::endl;
 		return 1;
 	}
     
-	char rowBuffer[BUFFER_SIZE];
-	char cellBuffer[BUFFER_SIZE];
+	std::string buffer;
+	std::string elementBuffer;
     
-	for (int rowIndex = 0; !I.eof(); rowIndex++)
+	for (int rowIndex = 0; !dataFile.eof(); rowIndex++)
 	{
-		// read a whole line into the buffer:
-		I.getline(rowBuffer, BUFFER_SIZE, '\n');
-		if (strlen(rowBuffer) == 0)
+		// Read a whole line into the buffer:   
+		std::getline(dataFile, buffer, '\n');
+		std::stringstream line(buffer);
+
+		if (buffer.empty())
 			break;
         
-		std::stringstream s_rowBuffer(rowBuffer);
-        
-		for (int colIndex = 0; !s_rowBuffer.eof(); colIndex++)
+		for (int colIndex = 0; !line.eof(); colIndex++)
 		{
 			if (rowIndex == 0)
 				g_columns.push_back(ColumnVector());
 
-			s_rowBuffer.getline(cellBuffer, BUFFER_SIZE, '\t');
+			std::getline(line, elementBuffer, '\t');
 
-			std::map<std::string, int>::iterator dictionaryEntry = dictionary.find(cellBuffer);
+			std::map<std::string, int>::iterator dictionaryEntry = dictionary.find(elementBuffer);
 			if (dictionaryEntry == dictionary.end())
 			{
 				// element was not found in dictionary
-				dictionary[cellBuffer] = distinctValues;
+				dictionary[elementBuffer] = distinctValues;
 				g_columns.at(colIndex).push_back(distinctValues++);
 			}
 			else
 			{
 				// element already exists in dictionary
-				g_columns.at(colIndex).push_back(dictionary[cellBuffer]);
+				g_columns.at(colIndex).push_back(dictionary[elementBuffer]);
 			}
-
-			//std::cout << cellBuffer << "\t";
 		}
-		//std::cout << std::endl;
-        //		if (rowIndex % 54000 == 0)
-        //			std::cout << "read " << rowIndex << " rows." << std::endl;
+
+        if (rowIndex % 50000 == 0)
+        	std::cout << "Read " << rowIndex << " rows. Distinct values so far: " << distinctValues << std::endl;
 	}
-    
-    
-    
+
     return 0;
 }
 
@@ -158,7 +151,7 @@ void printTable()
 std::vector<std::vector<int>> isUniqueColumnCombinationPLI(ColumnCombination &combination) // Markus
 {
     //if result vector is empty than it was unique
-    return vector;
+    return std::vector<std::vector<int>>();
 }
 
 ColumnCombination findNextCombination() //Crizzy
@@ -167,8 +160,8 @@ ColumnCombination findNextCombination() //Crizzy
     
     
     // considers cost
-    if isCombinationExpensive()
-        continue;
+    //if isCombinationExpensive()
+    //    continue;
 }
 
 int main(int argc, const char * argv[])
