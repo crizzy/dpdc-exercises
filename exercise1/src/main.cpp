@@ -12,28 +12,30 @@
 #include <vector>
 #include <list>
 #include <algorithm>    // std::unique, std::distance
+#include <map>
 
 
-#ifdef WIN32
-#define DATA_PATH "../data/testfile_from_lecture.tsv"
+
+#ifdef _WIN32
+#define DATA_PATH "../data/uniprot.tsv"
 #else
 #define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/testfile_from_lecture.tsv"
 #endif
 
 
-#include <map>
+
 
 #define COLS 223
 #define BUFFER_SIZE 128000
 
-typedef std::vector<std::string> ColumnVector;
+typedef std::vector<int> ColumnVector;
 
 // global vars
 std::vector<ColumnVector> columns;
 
 
 
-bool checkUniquenessFor1Column(std::vector<std::string> &column)
+/*bool checkUniquenessFor1Column(std::vector<int> &column)
 {
     size_t sizeBefore = column.size();
     ColumnVector::iterator it = std::unique(column.begin(), //TODO: do this for multiple columns
@@ -74,23 +76,21 @@ bool isUniqueColumnCombination(std::vector<int> &combination)
         return checkUniquenessFor1Column(column);
         //TODO {1, 2} sind noch false
     }
-}
+}*/
 
 
 
 
 int readColumnsFromFile()
 {
-	for (int i = 0; i<COLS; i++)
-	{
-		columns.push_back(ColumnVector());
-	}
+	std::map<std::string, int> dictionary;
+	unsigned int distinctValues = 0;
     
 	// read column names:
 	std::ifstream I(DATA_PATH);
 	if (!I.is_open())
 	{
-		std::cout << "Cannot find file \"uniprot.tsv\"" << std::endl;
+		std::cout << "Cannot find file \"" << DATA_PATH << "\"" << std::endl;
 		return 1;
 	}
     
@@ -108,11 +108,27 @@ int readColumnsFromFile()
         
 		for (int colIndex = 0; !s_rowBuffer.eof(); colIndex++)
 		{
+			if (rowIndex == 0)
+				columns.push_back(ColumnVector());
+
 			s_rowBuffer.getline(cellBuffer, BUFFER_SIZE, '\t');
-			columns.at(colIndex).push_back(cellBuffer);
-			std::cout << cellBuffer << "\t";
+
+			std::map<std::string, int>::iterator dictionaryEntry = dictionary.find(cellBuffer);
+			if (dictionaryEntry == dictionary.end())
+			{
+				// element was not found in dictionary
+				dictionary[cellBuffer] = distinctValues;
+				columns.at(colIndex).push_back(distinctValues++);
+			}
+			else
+			{
+				// element already exists in dictionary
+				columns.at(colIndex).push_back(dictionary[cellBuffer]);
+			}
+
+			//std::cout << cellBuffer << "\t";
 		}
-		std::cout << std::endl;
+		//std::cout << std::endl;
         //		if (rowIndex % 54000 == 0)
         //			std::cout << "read " << rowIndex << " rows." << std::endl;
 	}
@@ -120,6 +136,20 @@ int readColumnsFromFile()
     
     
     return 0;
+}
+
+void printTable()
+{
+	int rowCount = columns.at(0).size();
+	int colCount = columns.size();
+	for (int row = 0; row < rowCount; row++)
+	{
+		for (int col = 0; col < colCount; col++)
+		{
+			std::cout << columns[col][row] << "\t";
+		}
+		std::cout << std::endl;
+	}
 }
 
 int main(int argc, const char * argv[])
@@ -135,13 +165,15 @@ int main(int argc, const char * argv[])
     
     
     // unique column combinations
-    std::vector<int> combination = {1,2};
+    std::vector<int> combination;
+	combination.push_back(1);
+	combination.push_back(2);
     
-    isUniqueColumnCombination(combination) ?
+    /*isUniqueColumnCombination(combination) ?
     std::cout <<"true" << std::endl:
-    std::cout <<"false" << std::endl;
+    std::cout <<"false" << std::endl;*/
     
-    
+    //printTable();
     
     // end
     std::cout << "Finished!" << std::endl;
