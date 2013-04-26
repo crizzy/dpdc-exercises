@@ -11,7 +11,7 @@
 #include <sstream>
 #include <vector>
 #include <list>
-#include <algorithm>    // std::unique, std::distance
+#include <algorithm>    // std::unique, std::distance std::intersection std::sort
 #include <map>
 
 
@@ -25,7 +25,7 @@
 
 
 typedef std::vector<int> ColumnVector;
-typedef std::vector<int> ColumnCombination;
+typedef std::vector<short> ColumnCombination;
 
 // global vars
 std::vector<ColumnVector> g_columns;
@@ -150,41 +150,74 @@ void printTable()
 }
 
 
-std::vector<std::vector<std::vector<int>>> isUniqueColumnCombinationPLI(ColumnCombination &combination) // Markus //TODO rename method
+std::vector<std::vector<int>> isUniqueColumnCombinationPLI(ColumnCombination &combination) // Markus //TODO rename method // for comb with size 2
 {
     //if result vector is empty than it was unique
+
+    if (combination.size() != 2)
+    {
+        std::cout << "isUniqueColumnCombinationPLI() assumes combination of size 2" << std::endl;
+        return std::vector<std::vector<int>>();
+    }
+    std::vector<std::vector<int>> duplicates = std::vector<std::vector<int>>(); // AB = {{r1,r3},{},{}}
     
-    std::vector<std::vector<std::vector<int>>> duplicates;
-    
+    std::vector<std::vector<std::vector<int>>> vec_of_columnDuplicates; // A: {{r1, r2, r3}, {r4, r5}}; B: ...
+    vec_of_columnDuplicates.push_back(std::vector<std::vector<int>>()); // A: {{r1, r2, r3}, {r4, r5}} für ersten Durchlauf
+    vec_of_columnDuplicates.push_back(std::vector<std::vector<int>>());
     
     for (int combIndex = 0; combIndex < combination.size(); combIndex++)
     {
-        int columnIndex = combination[combIndex];
+        // this preprocesses 1 column (1. PLI slide)
         
-        std::map<int,std::vector<int>> dict; // temporary dictionary
+        int columnIndex = combination[combIndex];
+        std::map<int,std::vector<int>> dict; // A: a->{r1, r2, r3}, b->{r4, r5}
         
         std::vector<int> &column = g_columns[columnIndex];
         for (int rowIndex = 0; rowIndex < column.size(); rowIndex++)
         {
             int &cell = column[rowIndex];
-            if (dict.find(cell)) // key existing
-                dict[column[rowIndex]].push_back(cell)
-            else
-                dict[column[rowIndex]] = cell;
-            
+            std::map<int,std::vector<int>>::iterator it = dict.find(cell);
+            if (it == dict.end()) // key not existing yet
+            {
+                // build new vector with current row in it
+                std::vector<int> vec = std::vector<int>();
+                vec.push_back(rowIndex);
+                dict[cell] = vec;
+            }
+            else // key existing
+            {
+                it->second.push_back(rowIndex);
+            }
             
         }
-        
         // iterate over map, throw out unique values (where vector has just 1 element), and put remaining vectors in a vector
         
         
+        std::map<int,std::vector<int>>::iterator it;
+        for (it=dict.begin(); it!=dict.end(); it++)
+        {
+            if (it->second.size() > 1)
+                vec_of_columnDuplicates[combIndex].push_back(it->second); //assume it->second is sorted
+        }
         
-            
     }
-        
-        
-
     
+    //pairwise intersection
+    std::vector<std::vector<int>>::iterator it1; // iterator for column A
+    std::vector<std::vector<int>>::iterator it2; // iterator for column B
+    for (it1 = vec_of_columnDuplicates[0].begin(); it1 < vec_of_columnDuplicates[0].end(); it1++)
+    {
+        for (it2 = vec_of_columnDuplicates[1].begin(); it2 < vec_of_columnDuplicates[1].end(); it2++)
+        {
+            std::vector<int> v(it1->size() + it2->size());
+            // we assume that (*it1) is sorted
+            std::vector<int>::iterator it = std::set_intersection(it1->begin(), it1->end(), it2->begin(), it2->end(), v.begin());
+            v.resize(it - v.begin());
+            
+            if (v.size() > 1)
+                duplicates.push_back(v);
+        }
+    }
     return duplicates; //local var?
 }
 
@@ -205,40 +238,41 @@ int main(int argc, const char * argv[])
     readColumnsFromFile();
     
     // check if read correctly
-    //    for(ColumnVector::iterator it = g_columns[0].begin(); it != g_columns[0].end();it++)
-    //    {
-    //        std::cout << *it<<std::endl;
-    //    }
+//    for(ColumnVector::iterator it = g_columns[0].begin(); it != g_columns[0].end();it++)
+//    {
+//        std::cout << *it << std::endl;
+//    }
 
         
     for (int i = 0; i < g_columns.size(); i++)
     {
-        ColumnCombination combination;
-        combination.push_back(i);
-        std::vector<std::vector<int>> &g_costs = isUniqueColumnCombinationPLI(combination);
-        
-        //remember the return values= g_costs
-        
+        for (int j = i+1; j < g_columns.size(); j++)
+        {
+            ColumnCombination combination;
+            combination.push_back(i);
+            combination.push_back(j);
+            // if i and j are the same that is like just checking 1 column
+            
+            std::vector<std::vector<int>> remainingRows = isUniqueColumnCombinationPLI(combination);
+            if (remainingRows.empty()) // unique column combination
+                std::cout << "found unique column combination: {" << combination[0] << ", " << combination[1] << "}" << std::endl;
+            
+            std::vector<std::vector<int>> g_costs = isUniqueColumnCombinationPLI(combination); // TODO give return value as parameter
+            
+            //remember the return values= g_costs
+        }
     }
     
     
-    while (true)
-    {
-        ColumnCombination findNextCombination();
-        
-       
-    }
+//    while (true)
+//    {
+//        ColumnCombination findNextCombination();
+//        
+//       
+//    }
     
-    // unique column combinations
-    std::vector<int> combination;
-	combination.push_back(1);
-	combination.push_back(2);
     
-    /*isUniqueColumnCombination(combination) ?
-    std::cout <<"true" << std::endl:
-    std::cout <<"false" << std::endl;*/
     
-    //printTable();
     
     // end
     std::cout << "Finished!" << std::endl;
