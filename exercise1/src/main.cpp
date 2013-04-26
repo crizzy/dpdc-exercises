@@ -19,7 +19,7 @@
 #ifdef _WIN32
 #define DATA_PATH "../data/uniprot.tsv"
 #else
-#define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/uniprot_20rows.tsv"
+#define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/uniprot.tsv"
 #endif
 
 
@@ -202,7 +202,7 @@ std::vector<std::vector<int>> isUniqueColumnCombinationPLI(ColumnCombination &co
         {
             std::vector<int> v(it1->size() + it2->size());
             // we assume that (*it1) is sorted
-            std::vector<int>::iterator it = std::set_intersection(it1->begin(), it1->end(), it2->begin(), it2->end(), v.begin());
+            std::vector<int>::iterator it = std::set_intersection(it1->begin(), it1->end(), it2->begin(), it2->end(), v.begin());// takes a lot of time
             v.resize(it - v.begin());
             
             if (v.size() > 1)
@@ -235,13 +235,15 @@ int main(int argc, const char * argv[])
 //    }
 
     
-    for (int i = 0; i < g_columns.size(); i++)
+    // Erkenntnis: bei den 1er Kombinationen sind spalte 0 und 1 unique
+    
+    for (int i = 2; i < g_columns.size(); i++)
     {
-        //for (int j = i+1; j < g_columns.size(); j++)
+        for (int j = i+1; j < g_columns.size(); j++)
         {
             ColumnCombination combination;
             combination.push_back(i);
-            combination.push_back(i);
+            combination.push_back(j);
             // if i and j are the same that is like just checking 1 column
             
             std::vector<std::vector<int>> remainingRows = isUniqueColumnCombinationPLI(combination);
@@ -267,4 +269,10 @@ int main(int argc, const char * argv[])
     std::cout << "Finished!" << std::endl;
     char c; std::cin >> c;
 }
+
+//TODO auf kleinem datensatz
+
+//Nico: anfang alles in hashmap rein, diese mappt dann key auf ein array
+
+//8min zum einlesen auf mac:(
 
