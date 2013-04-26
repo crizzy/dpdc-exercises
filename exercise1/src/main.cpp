@@ -46,7 +46,6 @@ std::map<int, ColumnCombination> g_costs;
     return false;
 }
 
-//TODO encode NULL with steuerzeichen
 bool isUniqueColumnCombination(std::vector<int> &combination)
 {//TODO make it work
     
@@ -138,8 +137,8 @@ int readColumnsFromFile()
 
 void printTable()
 {
-	int rowCount = g_columns.at(0).size();
-	int colCount = g_columns.size();
+	size_t rowCount = g_columns.at(0).size();
+	size_t colCount = g_columns.size();
 	for (int row = 0; row < rowCount; row++)
 	{
 		for (int col = 0; col < colCount; col++)
@@ -151,10 +150,42 @@ void printTable()
 }
 
 
-std::vector<std::vector<int>> isUniqueColumnCombinationPLI(ColumnCombination &combination) // Markus
+std::vector<std::vector<std::vector<int>>> isUniqueColumnCombinationPLI(ColumnCombination &combination) // Markus //TODO rename method
 {
     //if result vector is empty than it was unique
-    return std::vector<std::vector<int>>();
+    
+    std::vector<std::vector<std::vector<int>>> duplicates;
+    
+    
+    for (int combIndex = 0; combIndex < combination.size(); combIndex++)
+    {
+        int columnIndex = combination[combIndex];
+        
+        std::map<int,std::vector<int>> dict; // temporary dictionary
+        
+        std::vector<int> &column = g_columns[columnIndex];
+        for (int rowIndex = 0; rowIndex < column.size(); rowIndex++)
+        {
+            int &cell = column[rowIndex];
+            if (dict.find(cell)) // key existing
+                dict[column[rowIndex]].push_back(cell)
+            else
+                dict[column[rowIndex]] = cell;
+            
+            
+        }
+        
+        // iterate over map, throw out unique values (where vector has just 1 element), and put remaining vectors in a vector
+        
+        
+        
+            
+    }
+        
+        
+
+    
+    return duplicates; //local var?
 }
 
 ColumnCombination findNextCombination() //Crizzy
