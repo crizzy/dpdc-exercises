@@ -19,7 +19,7 @@
 #ifdef _WIN32
 #define DATA_PATH "../data/uniprot.tsv"
 #else
-#define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/testfile_from_lecture.tsv"
+#define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/uniprot_20rows.tsv"
 #endif
 
 
@@ -30,9 +30,6 @@ typedef std::vector<short> ColumnCombination;
 // global vars
 std::vector<ColumnVector> g_columns;
 std::map<int, ColumnCombination> g_costs;
-
-
-
 
 /*bool checkUniquenessFor1Column(std::vector<int> &column)
 {
@@ -75,9 +72,6 @@ bool isUniqueColumnCombination(std::vector<int> &combination)
         //TODO {1, 2} sind noch false
     }
 }*/
-
-
-
 
 int readColumnsFromFile()
 {
@@ -129,7 +123,6 @@ int readColumnsFromFile()
         if ((++rowIndex) % 50000 == 0)
         	std::cout << "Read " << (rowIndex) << " rows. Distinct values so far: " << distinctValues << std::endl;
 	}
-
 	std::cout << "Finished reading " << (rowIndex-1) << " rows. Total distinct values: " << distinctValues << std::endl;
 
     return 0;
@@ -187,12 +180,10 @@ std::vector<std::vector<int>> isUniqueColumnCombinationPLI(ColumnCombination &co
             else // key existing
             {
                 it->second.push_back(rowIndex);
-            }
-            
+            } 
         }
+        
         // iterate over map, throw out unique values (where vector has just 1 element), and put remaining vectors in a vector
-        
-        
         std::map<int,std::vector<int>>::iterator it;
         for (it=dict.begin(); it!=dict.end(); it++)
         {
@@ -218,7 +209,7 @@ std::vector<std::vector<int>> isUniqueColumnCombinationPLI(ColumnCombination &co
                 duplicates.push_back(v);
         }
     }
-    return duplicates; //local var?
+    return duplicates; 
 }
 
 ColumnCombination findNextCombination() //Crizzy
@@ -243,14 +234,14 @@ int main(int argc, const char * argv[])
 //        std::cout << *it << std::endl;
 //    }
 
-        
+    
     for (int i = 0; i < g_columns.size(); i++)
     {
-        for (int j = i+1; j < g_columns.size(); j++)
+        //for (int j = i+1; j < g_columns.size(); j++)
         {
             ColumnCombination combination;
             combination.push_back(i);
-            combination.push_back(j);
+            combination.push_back(i);
             // if i and j are the same that is like just checking 1 column
             
             std::vector<std::vector<int>> remainingRows = isUniqueColumnCombinationPLI(combination);
@@ -270,9 +261,7 @@ int main(int argc, const char * argv[])
 //        
 //       
 //    }
-    
-    
-    
+
     
     // end
     std::cout << "Finished!" << std::endl;
