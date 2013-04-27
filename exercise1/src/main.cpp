@@ -17,7 +17,7 @@
 #include <time.h>
 
 #ifdef _WIN32
-#define DATA_PATH "../data/testfile_from_lecture.tsv"
+#define DATA_PATH "../data/uniprot.tsv"
 #else
 #define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/uniprot.tsv"
 #endif
@@ -30,6 +30,9 @@ typedef std::map<std::string, int> Dictionary;
 std::vector<ColumnVector> g_columns;
 std::map<int, ColumnCombination> g_costs;
 __int64 g_columnCount = 0;
+int g_rowCount = 1000000000;//important: must be initialized to artificially high value
+
+const float searchDensity = 0.1f;
 
 float g_timeForIntersection;
 float g_timeTotal;
@@ -79,8 +82,8 @@ bool isUniqueColumnCombination(std::vector<int> &combination)
 
 int readColumnsFromFile()
 {
-	std::ifstream dataFile(DATA_PATH);
-	if (!dataFile.is_open())
+	std::ifstream dataFileOnDisc(DATA_PATH);
+	if (!dataFileOnDisc.is_open())
 	{
 		std::cout << "Cannot find file \"" << DATA_PATH << "\"" << std::endl;
 		return 1;
@@ -88,15 +91,20 @@ int readColumnsFromFile()
     
 	std::string tableValue;
 	Dictionary::iterator dictionaryEntry;
-
 	std::vector<std::streamoff> columnReadPositions;
 
 	std::cout << "Reading file \"" << DATA_PATH << "\" into RAM...";
 
+	std::stringstream dataFile;
+	dataFile << dataFileOnDisc.rdbuf();
+	dataFileOnDisc.close();
+
+	std::cout << "done!" << std::endl;
+
 	// first, determine the number of columns:
 	std::getline(dataFile, tableValue, '\n');
 	g_columnCount = std::count(tableValue.begin(), tableValue.end(), '\t') + 1;
-	std::cout << "(detected " << g_columnCount << " columns)" << std::endl;
+	std::cout << "Detected " << g_columnCount << " columns." << std::endl;
     
 	for (int colIndex = 0; colIndex < g_columnCount; colIndex++)
 	{
@@ -108,11 +116,9 @@ int readColumnsFromFile()
 		ColumnVector currentColumnVector;//our column vector to be built
 		ColumnVector cleanColumnVector;
 
-		for (int rowIndex = 0; !dataFile.eof(); rowIndex++)
+		int rowIndex = 0;
+		for (rowIndex = 0; !dataFile.eof() && rowIndex < g_rowCount; rowIndex++)
 		{
-			if (rowIndex > 539165)
-				std::cout << rowIndex << "col: " << colIndex << "tableValue: " << tableValue << std::endl;
-
 			if (colIndex > 0)
 			{
 				dataFile.seekg(columnReadPositions[rowIndex]);
@@ -164,9 +170,35 @@ int readColumnsFromFile()
 				cleanColumnVector.push_back(*it);
 		}
 
-		g_columns.push_back(cleanColumnVector);
+		if (colIndex == 0)
+			std::cout << "Detected " << (g_rowCount = rowIndex) << " rows." << std::endl;
 
-		std::cout << "Read column " << colIndex << ". Number of sets containing duplicate values: " << cleanColumnVector.size() << std::endl;
+		// determine number of unique values in this column:
+		int uniquesCount = g_rowCount;
+		for (int setId = 0; setId < cleanColumnVector.size(); setId++)
+		{
+			uniquesCount -= cleanColumnVector[setId].size();
+		}
+
+		std::cout << "Column " << colIndex << ": " << cleanColumnVector.size() << (cleanColumnVector.size() == 1 ? " set" : " sets") << " and " << uniquesCount << " uniques.";
+
+		if (uniquesCount == g_rowCount)
+		{
+			// drop column, if only containing unique values:
+			std::cout << " => Dropped, because column is already unique.";
+		}
+		else if (uniquesCount < g_rowCount * searchDensity)
+		{
+			// drop column, if there are too few unique values:
+			std::cout << " => Dropped because of too much duplicates.";
+		}
+		else
+		{
+			// take column into consideration for later combinations
+			g_columns.push_back(cleanColumnVector);
+		}
+
+		std::cout << std::endl;
 	}
 
 	std::cout << "Finished reading " << g_columnCount << " columns." << std::endl;
@@ -180,7 +212,15 @@ void printTable()
 	for (int col = 0; col < colCount; col++)
 	{
 		std::cout << "Column " << col << ": ";
-		if (g_columns[col].size() < 20)
+
+		//Determine size of column:
+		int columnSize = 0;
+		for (int duplicate = 0; duplicate < g_columns[col].size(); duplicate++)
+		{
+			columnSize += g_columns[col][duplicate].size();
+		}
+
+		if (columnSize < 20)
 		{
 			//Column is small enough to be printed in detail:
 			std::cout << "{";
