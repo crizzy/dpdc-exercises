@@ -12,27 +12,89 @@
 #include <vector>
 #include <list>
 #include <set>
+#include <iterator>		// std::inserter
 #include <algorithm>    // std::unique, std::distance std::intersection std::sort
 #include <map>
 #include <time.h>
 
 #ifdef _WIN32
-#define DATA_PATH "../data/uniprot.tsv"
+#define DATA_PATH "../data/uniprot2.tsv"
 #else
 #define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/uniprot.tsv"
 #endif
 
-typedef std::vector<std::set<int>> ColumnVector;
-typedef std::vector<short> ColumnCombination;
 typedef std::map<std::string, int> Dictionary;
 
+class ColumnCombination : public std::set<int>
+{
+	// A column combination is a set of column indices.
+
+public:
+
+	ColumnCombination()
+	{
+		//creates an empty column combination
+	}
+
+	ColumnCombination(int index)
+	{
+		//creates a column combination containing only one index
+		insert(index);
+	}
+
+	ColumnCombination(int firstIndex, int secondIndex)
+	{
+		//creates a column combination containing two indices
+		insert(firstIndex);
+		insert(secondIndex);
+	}
+
+	std::string toString()
+	{
+		std::stringstream columnCombinationString;
+		ColumnCombination::iterator c = begin();
+		columnCombinationString << "{";
+		if (c != end())
+		{
+			columnCombinationString << (*c);
+			while (++c != end())
+			{
+				columnCombinationString << ", " << (*c);
+			}
+		}
+		columnCombinationString << "}";
+		return columnCombinationString.str();
+	}
+
+	int maxIndex()
+	{
+		int max = 0;
+		for (ColumnCombination::iterator c = begin(); c != end(); c++)
+		{
+			if (max < *c)
+				max = *c;
+		}
+		return max;
+	}
+};
+
+class ColumnVector : public std::vector<std::set<int>>
+{
+	// A column vector is a vector of sets, containing the indices of duplicates
+
+public:
+
+	ColumnCombination original;
+};
+
 // global vars
-std::vector<ColumnVector> g_columns;
-std::map<int, ColumnCombination> g_costs;
+std::vector<ColumnVector> g_columns;//all single columns
+std::vector<ColumnVector> g_combinedColumns[2];//column combinations
+
 __int64 g_columnCount = 0;
 int g_rowCount = 1000000000;//important: must be initialized to artificially high value
 
-const float searchDensity = 0.1f;
+const float searchDensity = 0.1;
 
 float g_timeForIntersection;
 float g_timeTotal;
@@ -79,6 +141,16 @@ bool isUniqueColumnCombination(std::vector<int> &combination)
         //TODO {1, 2} sind noch false
     }
 }*/
+
+int getNumberOfUniques(ColumnVector &cv)
+{
+	int uniques = g_rowCount;
+	for (int setId = 0; setId < cv.size(); setId++)
+	{
+		uniques -= cv[setId].size();
+	}
+	return uniques;
+}
 
 int readColumnsFromFile()
 {
@@ -174,11 +246,7 @@ int readColumnsFromFile()
 			std::cout << "Detected " << (g_rowCount = rowIndex) << " rows." << std::endl;
 
 		// determine number of unique values in this column:
-		int uniquesCount = g_rowCount;
-		for (int setId = 0; setId < cleanColumnVector.size(); setId++)
-		{
-			uniquesCount -= cleanColumnVector[setId].size();
-		}
+		int uniquesCount = getNumberOfUniques(cleanColumnVector);
 
 		std::cout << "Column " << colIndex << ": " << cleanColumnVector.size() << (cleanColumnVector.size() == 1 ? " set" : " sets") << " and " << uniquesCount << " uniques.";
 
@@ -195,6 +263,7 @@ int readColumnsFromFile()
 		else
 		{
 			// take column into consideration for later combinations
+			cleanColumnVector.original.insert(colIndex);
 			g_columns.push_back(cleanColumnVector);
 		}
 
@@ -202,6 +271,8 @@ int readColumnsFromFile()
 	}
 
 	std::cout << "Finished reading " << g_columnCount << " columns." << std::endl;
+
+	g_columnCount = g_columns.size();
 
     return 0;
 }
@@ -211,18 +282,13 @@ void printTable()
 	size_t colCount = g_columns.size();
 	for (int col = 0; col < colCount; col++)
 	{
-		std::cout << "Column " << col << ": ";
+		std::cout << "Column " << g_columns[col].original.toString() << ": ";
 
-		//Determine size of column:
-		int columnSize = 0;
-		for (int duplicate = 0; duplicate < g_columns[col].size(); duplicate++)
-		{
-			columnSize += g_columns[col][duplicate].size();
-		}
+		int uniques = getNumberOfUniques(g_columns[col]);
 
-		if (columnSize < 20)
+		if ((g_rowCount - uniques) < 20)
 		{
-			//Column is small enough to be printed in detail:
+			//Sets are small enough to be printed in detail:
 			std::cout << "{";
 			for (int duplicate = 0; duplicate < g_columns[col].size(); duplicate++)
 			{
@@ -235,13 +301,15 @@ void printTable()
 				}
 				std::cout << "}";
 			}
-			std::cout << "}\n";
+			std::cout << "}";
 		}
 		else
 		{
-			//Column is big, so only print the number of sets of duplicates:
-			std::cout << g_columns[col].size() << " sets of duplicates\n";
+			//Sets are big, so only print the number of sets of duplicates:
+			std::cout << g_columns[col].size() << (g_columns[col].size() == 1 ? " set" : " sets");
 		}
+
+		std::cout << ", " << uniques << " uniques\n";
 	}
 }
 
@@ -323,14 +391,11 @@ void printTable()
     return duplicates; 
 }*/
 
-ColumnCombination findNextCombination() //Crizzy
+void reportUniqueColumnCombination(ColumnCombination &c)
 {
- 
-    // considers cost
-    //if isCombinationExpensive()
-    //    continue;
-	return ColumnCombination();
+	std::cout << "### Found unique: " << c.toString() << std::endl;
 }
+
 
 int main(int argc, const char * argv[])
 {
@@ -339,8 +404,134 @@ int main(int argc, const char * argv[])
     
     // read stuff
     readColumnsFromFile();
-	printTable();
-    
+	//printTable();
+
+	std::cout << "Operating on a subset of " << g_columnCount << " columns." << std::endl;
+
+	// sort columns based on number of uniques:
+	//std::set<std::pair<int, int>> columns;
+	//for (int columnIndex = 0; columnIndex < g_columnCount; columnIndex++)
+	//{
+	//	columns.insert(std::make_pair(g_rowCount - getNumberOfUniques(g_columns[columnIndex]), columnIndex);
+	//}
+
+	//std::cout << std::endl << "map:" << std::endl;
+	//for (std::map<int, int>::iterator it = columns.begin(); it != columns.end(); it++)
+	//{
+	//	std::cout << it->first << " uniques -> column " << it->second << std::endl;
+	//}
+
+	std::cout << std::endl;
+
+	std::cout << "Building 2-dimensional column combinations..." << std::endl;
+	int columnCount = g_columns.size();
+	for (int leftColumnIndex = 0; leftColumnIndex < columnCount; ++leftColumnIndex)
+	{
+		for (int rightColumnIndex = leftColumnIndex+1; rightColumnIndex < columnCount; ++rightColumnIndex)
+		{
+			std::cout << "Intersecting " << g_columns[leftColumnIndex].original.toString() << " with " << g_columns[rightColumnIndex].original.toString() << "..." << std::endl;
+
+			ColumnVector intersectedColumnVector;
+			for (int leftSetId = 0; leftSetId < g_columns[leftColumnIndex].size(); ++leftSetId)
+			{
+				for (int rightSetId = 0; rightSetId < g_columns[rightColumnIndex].size(); ++rightSetId)
+				{
+					std::set<int> intersection;
+					std::set_intersection(
+						g_columns[leftColumnIndex][leftSetId].begin(),
+						g_columns[leftColumnIndex][leftSetId].end(),
+						g_columns[rightColumnIndex][rightSetId].begin(),
+						g_columns[rightColumnIndex][rightSetId].end(),
+						std::inserter(intersection, intersection.begin())
+					);
+					if (intersection.size() > 1)
+						intersectedColumnVector.push_back(intersection);
+				}
+			}
+
+			int uniques = getNumberOfUniques(intersectedColumnVector);
+
+			// only add the resulting column vector to our search set if it includes some improvement:
+			if (uniques != std::max(getNumberOfUniques(g_columns[leftColumnIndex]), getNumberOfUniques(g_columns[rightColumnIndex])))
+			{
+				std::set_union(
+					g_columns[leftColumnIndex].original.begin(),
+					g_columns[leftColumnIndex].original.end(),
+					g_columns[rightColumnIndex].original.begin(),
+					g_columns[rightColumnIndex].original.end(),
+					std::inserter(intersectedColumnVector.original, intersectedColumnVector.original.begin())
+				);
+
+				// but don't add it if the created combination is a unique one
+				if (uniques == g_rowCount)
+				{
+					reportUniqueColumnCombination(intersectedColumnVector.original);
+					continue;
+				}
+
+				g_combinedColumns[0].push_back(intersectedColumnVector);
+			}
+		}
+	}
+
+	for (int columnDimension = 3; columnDimension < g_columnCount; columnDimension++)
+	{
+		std::cout << "Building " << columnDimension << "-dimensional column combinations..." << std::endl;
+		int sourceColumns = !(columnDimension % 2);
+		int targetColumns = columnDimension % 2;
+		for (std::vector<ColumnVector>::iterator left = g_combinedColumns[sourceColumns].begin(); left != g_combinedColumns[sourceColumns].end(); left++)
+		{
+			for (int rightColumnIndex = left->original.maxIndex() + 1; rightColumnIndex < columnCount; ++rightColumnIndex)
+			{
+				std::cout << "Intersecting " << left->original.toString() << " with " << g_columns[rightColumnIndex].original.toString() << "...\n";
+
+				ColumnVector intersectedColumnVector;
+				for (int leftSetId = 0; leftSetId < left->size(); ++leftSetId)
+				{
+					for (int rightSetId = 0; rightSetId < g_columns[rightColumnIndex].size(); ++rightSetId)
+					{
+						std::set<int> intersection;
+						std::set_intersection(
+							(*left)[leftSetId].begin(),
+							(*left)[leftSetId].end(),
+							g_columns[rightColumnIndex][rightSetId].begin(),
+							g_columns[rightColumnIndex][rightSetId].end(),
+							std::inserter(intersection, intersection.begin())
+						);
+						if (intersection.size() > 1)
+							intersectedColumnVector.push_back(intersection);
+					}
+				}
+
+				int uniques = getNumberOfUniques(intersectedColumnVector);
+
+				// only add the resulting column vector to our search set if it includes some improvement:
+				if (uniques > std::max(getNumberOfUniques(*left), getNumberOfUniques(g_columns[rightColumnIndex])))
+				{
+					std::set_union(
+						(*left).original.begin(),
+						(*left).original.end(),
+						g_columns[rightColumnIndex].original.begin(),
+						g_columns[rightColumnIndex].original.end(),
+						std::inserter(intersectedColumnVector.original, intersectedColumnVector.original.begin())
+					);
+
+					// but don't add it if the created combination is a unique one
+					if (uniques == g_rowCount)
+					{
+						reportUniqueColumnCombination(intersectedColumnVector.original);
+						continue;
+					}
+
+					g_combinedColumns[targetColumns].push_back(intersectedColumnVector);
+				}
+			}			
+		}
+		g_combinedColumns[sourceColumns].clear();
+	}
+
+
+  
     // check if read correctly
 //    for(ColumnVector::iterator it = g_columns[0].begin(); it != g_columns[0].end();it++)
 //    {
@@ -385,7 +576,7 @@ int main(int argc, const char * argv[])
     
     // end
     std::cout << "Finished!" << std::endl;
-    char c; std::cin >> c;
+    char tempCharacter; std::cin >> tempCharacter;
 }
 
 //TODO auf kleinem datensatz
