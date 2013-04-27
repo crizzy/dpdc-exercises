@@ -14,15 +14,11 @@
 #include <algorithm>    // std::unique, std::distance std::intersection std::sort
 #include <map>
 
-
-
 #ifdef _WIN32
 #define DATA_PATH "../data/uniprot.tsv"
 #else
-#define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/uniprot_20000rows.tsv"
+#define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/uniprot.tsv"
 #endif
-
-
 
 typedef std::vector<int> ColumnVector;
 typedef std::vector<short> ColumnCombination;
@@ -30,6 +26,10 @@ typedef std::vector<short> ColumnCombination;
 // global vars
 std::vector<ColumnVector> g_columns;
 std::map<int, ColumnCombination> g_costs;
+
+float g_timeForIntersection;
+float g_timeTotal;
+
 
 /*bool checkUniquenessFor1Column(std::vector<int> &column)
 {
@@ -196,17 +196,25 @@ std::vector<std::vector<int>> isUniqueColumnCombinationPLI(ColumnCombination &co
     //pairwise intersection
     std::vector<std::vector<int>>::iterator it1; // iterator for column A
     std::vector<std::vector<int>>::iterator it2; // iterator for column B
-    for (it1 = vec_of_columnDuplicates[0].begin(); it1 < vec_of_columnDuplicates[0].end(); it1++)
+    for (it1 = vec_of_columnDuplicates[0].begin(); it1 < vec_of_columnDuplicates[0].end(); ++it1)
     {
-        for (it2 = vec_of_columnDuplicates[1].begin(); it2 < vec_of_columnDuplicates[1].end(); it2++)
+        for (it2 = vec_of_columnDuplicates[1].begin(); it2 < vec_of_columnDuplicates[1].end(); ++it2)
         {
-            std::vector<int> v(it1->size() + it2->size());
+            time_t beginTimeIntersection = clock();
+            
+            std::vector<int> v(it1->size() + it2->size()); //possible without making new vector
             // we assume that (*it1) is sorted
             std::vector<int>::iterator it = std::set_intersection(it1->begin(), it1->end(), it2->begin(), it2->end(), v.begin());// takes a lot of time
             v.resize(it - v.begin());
             
             if (v.size() > 1)
+            {
                 duplicates.push_back(v);
+                //return duplicates; // this makes intersection time shrink a lot, but results can't be propagated
+            }
+            
+            time_t endTimeIntersection = clock();
+            g_timeForIntersection += (float(endTimeIntersection - beginTimeIntersection)) / CLOCKS_PER_SEC;
         }
     }
     return duplicates; 
@@ -214,9 +222,7 @@ std::vector<std::vector<int>> isUniqueColumnCombinationPLI(ColumnCombination &co
 
 ColumnCombination findNextCombination() //Crizzy
 {
-    
-    
-    
+ 
     // considers cost
     //if isCombinationExpensive()
     //    continue;
@@ -225,6 +231,9 @@ ColumnCombination findNextCombination() //Crizzy
 
 int main(int argc, const char * argv[])
 {
+    g_timeForIntersection = 0.;
+    time_t beginTimeTotal = clock();
+    
     // read stuff
     readColumnsFromFile();
     
@@ -237,7 +246,7 @@ int main(int argc, const char * argv[])
     
     // Erkenntnis: bei den 1er Kombinationen sind spalte 0 und 1 unique
     
-    for (int i = 2; i < g_columns.size(); i++)
+    for (int i = 2; i < g_columns.size(); i++) // TODO: use sorted list instead, so that cheap combinations are done first
     {
         for (int j = i+1; j < g_columns.size(); j++)
         {
@@ -253,6 +262,11 @@ int main(int argc, const char * argv[])
             std::vector<std::vector<int>> g_costs = isUniqueColumnCombinationPLI(combination); // TODO give return value as parameter
             
             //remember the return values= g_costs
+            
+            time_t middleTimeTotal = clock();
+            g_timeTotal = float((middleTimeTotal - beginTimeTotal)) / CLOCKS_PER_SEC;
+            
+            //std::cout << "timeTotal: " << g_timeTotal << ", timeIntersection: " << g_timeForIntersection << std::endl;
         }
     }
     
@@ -274,5 +288,5 @@ int main(int argc, const char * argv[])
 
 //Nico: anfang alles in hashmap rein, diese mappt dann key auf ein array
 
-//8min zum einlesen auf mac:(
+//8min zum einlesen auf mac:( // 1min auf Release-Scheme :)
 
