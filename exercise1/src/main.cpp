@@ -15,6 +15,7 @@
 #include <algorithm>    // std::unique, std::distance std::intersection std::sort
 #include <map>
 #include <time.h>
+#include <inttypes.h>
 
 #ifdef _WIN32
 #define DATA_PATH "../data/uniprot.tsv"
@@ -29,7 +30,7 @@ typedef std::map<std::string, int> Dictionary;
 // global vars
 std::vector<ColumnVector> g_columns;
 std::map<int, ColumnCombination> g_costs;
-__int64 g_columnCount = 0;
+int64_t g_columnCount = 0;
 int g_rowCount = 1000000000;//important: must be initialized to artificially high value
 
 const float searchDensity = 0.1f;
@@ -190,7 +191,7 @@ int readColumnsFromFile()
 		else if (uniquesCount < g_rowCount * searchDensity)
 		{
 			// drop column, if there are too few unique values:
-			std::cout << " => Dropped because of too much duplicates.";
+			std::cout << " => Dropped because of too many duplicates.";
 		}
 		else
 		{
