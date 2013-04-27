@@ -11,21 +11,25 @@
 #include <sstream>
 #include <vector>
 #include <list>
+#include <set>
 #include <algorithm>    // std::unique, std::distance std::intersection std::sort
 #include <map>
+#include <time.h>
 
 #ifdef _WIN32
-#define DATA_PATH "../data/uniprot.tsv"
+#define DATA_PATH "../data/testfile_from_lecture.tsv"
 #else
 #define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/uniprot.tsv"
 #endif
 
-typedef std::vector<int> ColumnVector;
+typedef std::vector<std::set<int>> ColumnVector;
 typedef std::vector<short> ColumnCombination;
+typedef std::map<std::string, int> Dictionary;
 
 // global vars
 std::vector<ColumnVector> g_columns;
 std::map<int, ColumnCombination> g_costs;
+__int64 g_columnCount = 0;
 
 float g_timeForIntersection;
 float g_timeTotal;
@@ -75,10 +79,6 @@ bool isUniqueColumnCombination(std::vector<int> &combination)
 
 int readColumnsFromFile()
 {
-	std::map<std::string, int> dictionary;
-	unsigned int distinctValues = 0;
-    
-	// read column names:
 	std::ifstream dataFile(DATA_PATH);
 	if (!dataFile.is_open())
 	{
@@ -86,64 +86,127 @@ int readColumnsFromFile()
 		return 1;
 	}
     
-	std::string buffer;
-	std::string elementBuffer;
-	std::map<std::string, int>::iterator dictionaryEntry;
-	int rowIndex = 0;
+	std::string tableValue;
+	Dictionary::iterator dictionaryEntry;
 
-	std::cout << "Reading file \"" << DATA_PATH << "\" into RAM..." << std::endl;
+	std::vector<std::streamoff> columnReadPositions;
+
+	std::cout << "Reading file \"" << DATA_PATH << "\" into RAM...";
+
+	// first, determine the number of columns:
+	std::getline(dataFile, tableValue, '\n');
+	g_columnCount = std::count(tableValue.begin(), tableValue.end(), '\t') + 1;
+	std::cout << "(detected " << g_columnCount << " columns)" << std::endl;
     
-	while (!dataFile.eof())
+	for (int colIndex = 0; colIndex < g_columnCount; colIndex++)
 	{
-		// Read a whole line into the buffer:   
-		std::getline(dataFile, buffer, '\n');
-		std::stringstream line(buffer);
-        
-		for (int colIndex = 0; !line.eof(); colIndex++)
+		dataFile.clear();//clear eof bit
+		dataFile.seekg(0);
+
+		Dictionary dictionary;//the dictionary holding distinct values of this column
+		int dictionarySize = 0;//size of the dictionary for fast access
+		ColumnVector currentColumnVector;//our column vector to be built
+		ColumnVector cleanColumnVector;
+
+		for (int rowIndex = 0; !dataFile.eof(); rowIndex++)
 		{
-			if (rowIndex == 0)
-				g_columns.push_back(ColumnVector());
+			if (rowIndex > 539165)
+				std::cout << rowIndex << "col: " << colIndex << "tableValue: " << tableValue << std::endl;
 
-			std::getline(line, elementBuffer, '\t');
-
-			dictionaryEntry = dictionary.find(elementBuffer);
-			if (dictionaryEntry == dictionary.end())
+			if (colIndex > 0)
 			{
-				// element was not found in dictionary
-				dictionary[elementBuffer] = distinctValues;
-				g_columns.at(colIndex).push_back(distinctValues++);
+				dataFile.seekg(columnReadPositions[rowIndex]);
+			}
+
+			//read next table value in the current column:
+			std::getline(dataFile, tableValue, (colIndex < g_columnCount-1) ? '\t' : '\n');
+
+			if (dataFile.eof())
+				break;
+
+			//save the current read position for later jumping:
+			if (colIndex == 0)
+			{
+				columnReadPositions.push_back(dataFile.tellg());
 			}
 			else
 			{
-				// element already exists in dictionary
-				g_columns.at(colIndex).push_back(dictionaryEntry->second);
+				columnReadPositions[rowIndex] = dataFile.tellg();
+			}
+
+			if (colIndex < g_columnCount-1)
+			{
+				//go to the end of the line:
+				dataFile.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+			}
+
+			dictionaryEntry = dictionary.find(tableValue);
+			if (dictionaryEntry == dictionary.end())
+			{
+				// value has not been found in this column
+				dictionary[tableValue] = dictionarySize++;
+				std::set<int> s;
+				s.insert(rowIndex);
+				currentColumnVector.push_back(s);
+			}
+			else
+			{
+				// value is already part of the column
+				currentColumnVector[dictionaryEntry->second].insert(rowIndex);
 			}
 		}
 
-        if ((++rowIndex) % 50000 == 0)
-        	std::cout << "Read " << (rowIndex) << " rows. Distinct values so far: " << distinctValues << std::endl;
+		//Create a new "clean" column vector based on the current one, ignoring all sets with cardinality 1:
+		int n = 0;
+		for (std::vector<std::set<int>>::iterator it = currentColumnVector.begin(); it != currentColumnVector.end(); it++)
+		{
+			if (it->size() > 1)
+				cleanColumnVector.push_back(*it);
+		}
+
+		g_columns.push_back(cleanColumnVector);
+
+		std::cout << "Read column " << colIndex << ". Number of sets containing duplicate values: " << cleanColumnVector.size() << std::endl;
 	}
-	std::cout << "Finished reading " << (rowIndex-1) << " rows. Total distinct values: " << distinctValues << std::endl;
+
+	std::cout << "Finished reading " << g_columnCount << " columns." << std::endl;
 
     return 0;
 }
 
 void printTable()
 {
-	size_t rowCount = g_columns.at(0).size();
 	size_t colCount = g_columns.size();
-	for (int row = 0; row < rowCount; row++)
+	for (int col = 0; col < colCount; col++)
 	{
-		for (int col = 0; col < colCount; col++)
+		std::cout << "Column " << col << ": ";
+		if (g_columns[col].size() < 20)
 		{
-			std::cout << g_columns[col][row] << "\t";
+			//Column is small enough to be printed in detail:
+			std::cout << "{";
+			for (int duplicate = 0; duplicate < g_columns[col].size(); duplicate++)
+			{
+				std::set<int>::iterator c = g_columns[col][duplicate].begin();
+				if (c != g_columns[col][duplicate].end())
+					std::cout << "{" << (*c);
+				while (++c != g_columns[col][duplicate].end())
+				{
+					std::cout << ", " << (*c);
+				}
+				std::cout << "}";
+			}
+			std::cout << "}\n";
 		}
-		std::cout << std::endl;
+		else
+		{
+			//Column is big, so only print the number of sets of duplicates:
+			std::cout << g_columns[col].size() << " sets of duplicates\n";
+		}
 	}
 }
 
 
-std::vector<std::vector<int>> isUniqueColumnCombinationPLI(ColumnCombination &combination) // Markus //TODO rename method // for comb with size 2
+/*std::vector<std::vector<int>> isUniqueColumnCombinationPLI(ColumnCombination &combination) // Markus //TODO rename method // for comb with size 2
 {
     //if result vector is empty than it was unique
 
@@ -218,7 +281,7 @@ std::vector<std::vector<int>> isUniqueColumnCombinationPLI(ColumnCombination &co
         }
     }
     return duplicates; 
-}
+}*/
 
 ColumnCombination findNextCombination() //Crizzy
 {
@@ -236,6 +299,7 @@ int main(int argc, const char * argv[])
     
     // read stuff
     readColumnsFromFile();
+	printTable();
     
     // check if read correctly
 //    for(ColumnVector::iterator it = g_columns[0].begin(); it != g_columns[0].end();it++)
@@ -246,7 +310,7 @@ int main(int argc, const char * argv[])
     
     // Erkenntnis: bei den 1er Kombinationen sind spalte 0 und 1 unique
     
-    for (int i = 2; i < g_columns.size(); i++) // TODO: use sorted list instead, so that cheap combinations are done first
+    /*for (int i = 2; i < g_columns.size(); i++) // TODO: use sorted list instead, so that cheap combinations are done first
     {
         for (int j = i+1; j < g_columns.size(); j++)
         {
@@ -268,7 +332,7 @@ int main(int argc, const char * argv[])
             
             //std::cout << "timeTotal: " << g_timeTotal << ", timeIntersection: " << g_timeForIntersection << std::endl;
         }
-    }
+    }*/
     
     
 //    while (true)
