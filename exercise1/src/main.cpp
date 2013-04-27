@@ -19,7 +19,7 @@
 #ifdef _WIN32
 #define DATA_PATH "../data/uniprot.tsv"
 #else
-#define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/uniprot.tsv"
+#define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/uniprot_20000rows.tsv"
 #endif
 
 
