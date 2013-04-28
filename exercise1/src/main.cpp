@@ -16,6 +16,7 @@
 #include <algorithm>    // std::unique, std::distance std::intersection std::sort
 #include <map>
 #include <time.h>
+#include <iomanip>
 
 #ifdef _WIN32
 #define DATA_PATH "../data/uniprot_20rows.tsv"
@@ -141,17 +142,13 @@ void reportUniqueColumnCombination(ColumnCombination &c)
 	g_outputFile << c.toTabbedString() << std::endl;
 }
 
-std::string durationToString(time_t duration)
+std::string timeToString(time_t ms)
 {
 	std::stringstream ss;
-	if (duration >= 24*60*60*1000)
-		ss << (duration / (24*60*60*1000)) << ":";
-	if (duration >= 60*60*1000)
-		ss << ((duration % (24*60*60*1000)) / (60*60*1000)) << ":";
-	if (duration >= 60*1000)
-		ss << ((duration % (60*60*1000)) / (60*1000)) << ":";
-
-	ss << ((duration % (60*1000)) / 1000.0f);
+	ss << std::setfill('0') << std::setw(2) << (ms/3600000) << ":";
+	ss << std::setfill('0') << std::setw(2) << ((ms%3600000)/60000) << ":";
+	ss << std::setfill('0') << std::setw(2) << std::setprecision(3) << std::fixed << ((ms%60000)/1000) << ".";
+	ss << std::setfill('0') << std::setw(3) << (ms%1000);
 	return ss.str();
 }
 
@@ -283,7 +280,7 @@ int readColumnsFromFile()
 		std::cout << std::endl;
 	}
 
-	std::cout << "Finished reading " << g_columnCount << " columns in " << durationToString(clock() - readStartTime) << "." << std::endl;
+	std::cout << "Finished reading " << g_columnCount << " columns in " << timeToString(clock() - readStartTime) << "." << std::endl;
 
 	g_columnCount = g_columns.size();
 
@@ -329,7 +326,7 @@ void printTable()
 int main(int argc, const char * argv[])
 {
     time_t beginTimeTotal = clock();
-    
+   
     // read stuff
     readColumnsFromFile();
 	//printTable();
@@ -405,7 +402,7 @@ int main(int argc, const char * argv[])
 				}
 			}
 		}
-		std::cout << "\nDuration: " << durationToString(clock() - timeforOneDimension) << std::endl;
+		std::cout << "\nDuration: " << timeToString(clock() - timeforOneDimension) << std::endl;
 
 		// clear source table:
 		if (columnDimension > 2)
@@ -416,7 +413,7 @@ int main(int argc, const char * argv[])
 		targetTable = &g_combinedColumns[columnDimension % 2];
 	}
 
-    std::cout << "\n\nDone in " << durationToString(clock() - beginTimeTotal) << ". Found " << g_results.size() << " unique column combination" << (g_results.size() != 1 ? "s" : "") << ": " << std::endl;
+    std::cout << "\n\nDone in " << timeToString(clock() - beginTimeTotal) << ". Found " << g_results.size() << " unique column combination" << (g_results.size() != 1 ? "s" : "") << ": " << std::endl;
 	for (std::vector<ColumnCombination>::iterator c = g_results.begin(); c != g_results.end(); c++)
 	{
 		std::cout << c->toString() << std::endl;
