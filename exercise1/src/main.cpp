@@ -19,13 +19,13 @@
 #include <iomanip>
 
 #ifdef _WIN32
-#define DATA_PATH "../data/uniprot_20rows.tsv"
+#define DATA_PATH "../data/testfile_from_lecture.tsv"
 #else
 #define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/testfile_from_lecture.tsv"
 #include <inttypes.h>
 #endif
 
-//#define VERBOSE
+#define VERBOSE
 const float searchDensity = 0; // the bigger the more we throw out
 
 typedef std::map<std::string, int> Dictionary;
@@ -329,7 +329,7 @@ int main(int argc, const char * argv[])
    
     // read stuff
     readColumnsFromFile();
-	//printTable();
+	printTable();
 
 	std::cout << "Operating on a subset of " << g_columnCount << " columns." << std::endl;
     
@@ -365,7 +365,7 @@ int main(int argc, const char * argv[])
 							leftSet->end(),
 							rightSet->begin(),
 							rightSet->end(),
-							std::inserter(intersection, intersection.begin())
+							std::back_inserter(intersection)
 						);
 						if (intersection.size() > 1)
 							intersectedColumnVector.push_back(intersection);
