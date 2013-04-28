@@ -21,7 +21,7 @@
 #ifdef _WIN32
 #define DATA_PATH "../data/uniprot_20rows.tsv"
 #else
-#define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/testfile_from_lecture.tsv"
+#define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/uniprot_20000rows.tsv"
 #include <inttypes.h>
 #endif
 
@@ -125,12 +125,12 @@ float g_timeTotal;
 
 int getNumberOfUniques(ColumnVector &cv)
 {
-	int uniques = g_rowCount;
+	int uniques = g_rowCount;//??? funktioniert doch nur fuer 2 oder?
 	for (ColumnVector::iterator set = cv.begin(); set != cv.end(); ++set)
 	{
 		uniques -= (int)set->size();
 	}
-	return uniques;
+	return uniques; // give back number of sets
 }
 
 void reportUniqueColumnCombination(ColumnCombination &c)
