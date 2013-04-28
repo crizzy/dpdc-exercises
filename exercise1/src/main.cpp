@@ -142,13 +142,15 @@ void reportUniqueColumnCombination(ColumnCombination &c)
 	g_outputFile << c.toTabbedString() << std::endl;
 }
 
-std::string timeToString(time_t ms)
+std::string timeToString(time_t readingTime)
 {
+    time_t ms = float(readingTime) / CLOCKS_PER_SEC * 1000;
+    
 	std::stringstream ss;
-	ss << std::setfill('0') << std::setw(2) << (ms/3600000) << ":";
-	ss << std::setfill('0') << std::setw(2) << ((ms%3600000)/60000) << ":";
-	ss << std::setfill('0') << std::setw(2) << std::setprecision(3) << std::fixed << ((ms%60000)/1000) << ".";
-	ss << std::setfill('0') << std::setw(3) << (ms%1000);
+	ss << std::setfill('0') << std::setw(2) << (ms / 3600000) << ":";
+	ss << std::setfill('0') << std::setw(2) << ((ms % 3600000) / 60000) << ":";
+	ss << std::setfill('0') << std::setw(2) << std::setprecision(3) << std::fixed << ((ms % 60000) / 1000) << ".";
+	ss << std::setfill('0') << std::setw(3) << (ms % 1000);
 	return ss.str();
 }
 
@@ -244,7 +246,6 @@ int readColumnsFromFile()
 		}
 
 		//Create a new "clean" column vector based on the current one, ignoring all sets with cardinality 1:
-		int n = 0;
 		for (ColumnVector::iterator it = currentColumnVector.begin(); it != currentColumnVector.end(); it++)
 		{
 			if (it->size() > 1)
@@ -262,7 +263,8 @@ int readColumnsFromFile()
 		if (uniquesCount == g_rowCount)
 		{
 			// drop column, if only containing unique values:
-			reportUniqueColumnCombination(ColumnCombination(colIndex));
+            ColumnCombination c = ColumnCombination(colIndex);
+			reportUniqueColumnCombination(c);
 		}
 		else if (uniquesCount < g_rowCount * searchDensity)
 		{
@@ -279,7 +281,7 @@ int readColumnsFromFile()
 
 		std::cout << std::endl;
 	}
-
+    
 	std::cout << "Finished reading " << g_columnCount << " columns in " << timeToString(clock() - readStartTime) << "." << std::endl;
 
 	g_columnCount = g_columns.size();
