@@ -18,7 +18,7 @@
 #include <time.h>
 
 #ifdef _WIN32
-#define DATA_PATH "../data/uniprot2.tsv"
+#define DATA_PATH "../data/example.tsv"
 #else
 #define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/uniprot.tsv"
 #include <inttypes.h>
@@ -92,7 +92,7 @@ public:
 std::vector<ColumnVector> g_columns;//all single columns
 std::vector<ColumnVector> g_combinedColumns[2];//column combinations
 
-__int64 g_columnCount = 0;
+long long g_columnCount = 0;
 std::map<int, ColumnCombination> g_costs;
 int g_rowCount = 1000000000;//important: must be initialized to artificially high value
 
@@ -427,6 +427,8 @@ int main(int argc, const char * argv[])
 
 	std::cout << "Building 2-dimensional column combinations..." << std::endl;
 	int columnCount = g_columns.size();
+	std::set<int> intersection;
+	bool isUnique = false;
 	for (int leftColumnIndex = 0; leftColumnIndex < columnCount; ++leftColumnIndex)
 	{
 		for (int rightColumnIndex = leftColumnIndex+1; rightColumnIndex < columnCount; ++rightColumnIndex)
@@ -438,7 +440,6 @@ int main(int argc, const char * argv[])
 			{
 				for (int rightSetId = 0; rightSetId < g_columns[rightColumnIndex].size(); ++rightSetId)
 				{
-					std::set<int> intersection;
 					std::set_intersection(
 						g_columns[leftColumnIndex][leftSetId].begin(),
 						g_columns[leftColumnIndex][leftSetId].end(),
@@ -448,6 +449,7 @@ int main(int argc, const char * argv[])
 					);
 					if (intersection.size() > 1)
 						intersectedColumnVector.push_back(intersection);
+					intersection.clear();
 				}
 			}
 
@@ -464,8 +466,8 @@ int main(int argc, const char * argv[])
 					std::inserter(intersectedColumnVector.original, intersectedColumnVector.original.begin())
 				);
 
-				// but don't add it if the created combination is a unique one
-				if (uniques == g_rowCount)
+				// don't add the column vector if the created combination is a unique one
+				if (intersectedColumnVector.size() == 0)
 				{
 					reportUniqueColumnCombination(intersectedColumnVector.original);
 					continue;
@@ -480,7 +482,7 @@ int main(int argc, const char * argv[])
 	{
 		std::cout << "Building " << columnDimension << "-dimensional column combinations..." << std::endl;
 		int sourceColumns = !(columnDimension % 2);
-		int targetColumns = columnDimension % 2;
+		int targetColumns = !sourceColumns;
 		for (std::vector<ColumnVector>::iterator left = g_combinedColumns[sourceColumns].begin(); left != g_combinedColumns[sourceColumns].end(); left++)
 		{
 			for (int rightColumnIndex = left->original.maxIndex() + 1; rightColumnIndex < columnCount; ++rightColumnIndex)
@@ -492,7 +494,6 @@ int main(int argc, const char * argv[])
 				{
 					for (int rightSetId = 0; rightSetId < g_columns[rightColumnIndex].size(); ++rightSetId)
 					{
-						std::set<int> intersection;
 						std::set_intersection(
 							(*left)[leftSetId].begin(),
 							(*left)[leftSetId].end(),
@@ -502,6 +503,7 @@ int main(int argc, const char * argv[])
 						);
 						if (intersection.size() > 1)
 							intersectedColumnVector.push_back(intersection);
+						intersection.clear();
 					}
 				}
 
@@ -518,8 +520,8 @@ int main(int argc, const char * argv[])
 						std::inserter(intersectedColumnVector.original, intersectedColumnVector.original.begin())
 					);
 
-					// but don't add it if the created combination is a unique one
-					if (uniques == g_rowCount)
+					// don't add the column vector if the created combination is a unique one
+					if (intersectedColumnVector.size() == 0)
 					{
 						reportUniqueColumnCombination(intersectedColumnVector.original);
 						continue;
