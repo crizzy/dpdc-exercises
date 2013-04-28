@@ -18,11 +18,13 @@
 #include <time.h>
 
 #ifdef _WIN32
-#define DATA_PATH "../data/uniprot2.tsv"
+#define DATA_PATH "../data/uniprot.tsv"
 #else
 #define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/testfile_from_lecture.tsv"
 #include <inttypes.h>
 #endif
+
+#define VERBOSE
 
 typedef std::map<std::string, int> Dictionary;
 
@@ -67,6 +69,21 @@ public:
 		return columnCombinationString.str();
 	}
 
+	std::string toTabbedString()
+	{
+		std::stringstream columnCombinationString;
+		ColumnCombination::iterator c = begin();
+		if (c != end())
+		{
+			columnCombinationString << (*c);
+			while (++c != end())
+			{
+				columnCombinationString << '\t' << (*c);
+			}
+		}
+		return columnCombinationString.str();
+	}
+
 	int maxIndex()
 	{
 		int max = 0;
@@ -86,19 +103,21 @@ class ColumnVector : public std::vector<std::set<int>>
 public:
 
 	ColumnCombination original;
+	int uniques;
 };
 
 // global vars
 std::vector<ColumnVector> g_columns;//all single columns
 std::vector<ColumnVector> g_combinedColumns[2];//column combinations
 std::vector<ColumnCombination> g_results;
+std::ofstream g_outputFile;
 
 long long g_columnCount = 0;
 
 std::map<int, ColumnCombination> g_costs;
 int g_rowCount = 1000000000;//important: must be initialized to artificially high value
 
-const float searchDensity = 0.1; // as bigger as more we throw out
+const float searchDensity = 0; // as bigger as more we throw out
 
 float g_timeForIntersection;
 float g_timeTotal;
@@ -114,12 +133,34 @@ int getNumberOfUniques(ColumnVector &cv)
 	return uniques;
 }
 
+void reportUniqueColumnCombination(ColumnCombination &c)
+{
+	#ifdef VERBOSE
+		std::cout << " => Dropped, because column combination is unique: " << c.toString();
+	#endif
+	g_results.push_back(c);
+	g_outputFile << c.toTabbedString() << std::endl;
+}
+
+void reportIntersectionFinished(int uniquesCount, int setSize)
+{
+    std::cout << " " << setSize << (setSize == 1 ? " set" : " sets") << " and " << uniquesCount << " uniques.";
+}
+
 int readColumnsFromFile()
 {
 	std::ifstream dataFileOnDisc(DATA_PATH);
 	if (!dataFileOnDisc.is_open())
 	{
 		std::cout << "Cannot find file \"" << DATA_PATH << "\"" << std::endl;
+		return 1;
+	}
+
+	//Create a results file and overwrite the existing one, if present:
+	g_outputFile.open(std::string(DATA_PATH) + std::string("_uniques.txt"), std::ios::out | std::ios::trunc);
+	if (!g_outputFile.is_open())
+	{
+		std::cout << "Cannot write to output file \"" << std::string(DATA_PATH) << "_uniques.txt\"" << std::endl;
 		return 1;
 	}
     
@@ -215,7 +256,7 @@ int readColumnsFromFile()
 		if (uniquesCount == g_rowCount)
 		{
 			// drop column, if only containing unique values:
-			std::cout << " => Dropped, because column is already unique.";
+			reportUniqueColumnCombination(ColumnCombination(colIndex));
 		}
 		else if (uniquesCount < g_rowCount * searchDensity)
 		{
@@ -226,6 +267,7 @@ int readColumnsFromFile()
 		{
 			// take column into consideration for later combinations
 			cleanColumnVector.original.insert(colIndex);
+			cleanColumnVector.uniques = uniquesCount;
 			g_columns.push_back(cleanColumnVector);
 		}
 
@@ -275,17 +317,6 @@ void printTable()
 	}
 }
 
-
-void reportUniqueColumnCombination(ColumnCombination &c)
-{
-	std::cout << "### Found unique: " << c.toString() << std::endl;
-	g_results.push_back(c);
-}
-void reportIntersectionFinished(int uniquesCount, int setSize)
-{
-    std::cout << " " << setSize << (setSize == 1 ? " set" : " sets") << " and " << uniquesCount << " uniques.";
-}
-
 int main(int argc, const char * argv[])
 {
     g_timeForIntersection = 0.;
@@ -301,24 +332,31 @@ int main(int argc, const char * argv[])
 
 	std::set<int> intersection;
 	std::vector<ColumnVector> *sourceTable = &g_columns, *targetTable = &g_combinedColumns[1];
+	int leftSetId, rightSetId;
+	int uniques;
+	time_t timeforOneDimension;
 
 	for (int columnDimension = 2; columnDimension < g_columnCount; columnDimension++)
 	{
-		std::cout << "\nBuilding " << columnDimension << "-dimensional column combinations..." << std::endl;
-		for (std::vector<ColumnVector>::iterator left = sourceTable->begin(); left != sourceTable->end(); left++)
+		std::cout << "\nBuilding " << columnDimension << "-dimensional column combinations... (" << sourceTable->size() << "x" << g_columns.size() << " columns = " << (sourceTable->size() * g_columns.size()) << " intersections)";
+		timeforOneDimension = clock();
+		for (std::vector<ColumnVector>::iterator leftColumnVector = sourceTable->begin(); leftColumnVector != sourceTable->end(); leftColumnVector++)
 		{
-			for (int rightColumnIndex = left->original.maxIndex(); rightColumnIndex < columnCount; ++rightColumnIndex)
+			for (int rightColumnIndex = leftColumnVector->original.maxIndex(); rightColumnIndex < columnCount; ++rightColumnIndex)
 			{
-				std::cout << "Intersecting " << left->original.toString() << " with " << g_columns[rightColumnIndex].original.toString() << "...";
+				#ifdef VERBOSE
+					std::cout << "\nIntersecting " << leftColumnVector->original.toString() << " with " << g_columns[rightColumnIndex].original.toString() << "...";
+				#endif
 
 				ColumnVector intersectedColumnVector;
-				for (int leftSetId = 0; leftSetId < left->size(); ++leftSetId)
+
+				for (leftSetId = 0; leftSetId < leftColumnVector->size(); ++leftSetId)
 				{
-					for (int rightSetId = 0; rightSetId < g_columns[rightColumnIndex].size(); ++rightSetId)
+					for (rightSetId = 0; rightSetId < g_columns[rightColumnIndex].size(); ++rightSetId)
 					{
 						std::set_intersection(
-							(*left)[leftSetId].begin(),
-							(*left)[leftSetId].end(),
+							(*leftColumnVector)[leftSetId].begin(),
+							(*leftColumnVector)[leftSetId].end(),
 							g_columns[rightColumnIndex][rightSetId].begin(),
 							g_columns[rightColumnIndex][rightSetId].end(),
 							std::inserter(intersection, intersection.begin())
@@ -329,16 +367,18 @@ int main(int argc, const char * argv[])
 					}
 				}
 
-				int uniques = getNumberOfUniques(intersectedColumnVector);
-				reportIntersectionFinished(uniques, intersectedColumnVector.size());
-				std::cout << std::endl;
+				#ifdef VERBOSE
+					reportIntersectionFinished(uniques, intersectedColumnVector.size());
+				#endif
+
+				uniques = getNumberOfUniques(intersectedColumnVector);
 
 				// only add the resulting column vector to our search set if it includes some improvement:
-				if (uniques > std::max(getNumberOfUniques(*left), getNumberOfUniques(g_columns[rightColumnIndex])))
+				if (uniques != std::max<int>(leftColumnVector->uniques, g_columns[rightColumnIndex].uniques))
 				{
 					std::set_union(
-						(*left).original.begin(),
-						(*left).original.end(),
+						(*leftColumnVector).original.begin(),
+						(*leftColumnVector).original.end(),
 						g_columns[rightColumnIndex].original.begin(),
 						g_columns[rightColumnIndex].original.end(),
 						std::inserter(intersectedColumnVector.original, intersectedColumnVector.original.begin())
@@ -351,10 +391,12 @@ int main(int argc, const char * argv[])
 						continue;
 					}
 
+					intersectedColumnVector.uniques = uniques;
 					targetTable->push_back(intersectedColumnVector);
 				}
-			}			
+			}
 		}
+		std::cout << "\nDuration: " << (clock() - timeforOneDimension) << std::endl;
 
 		// clear source table:
 		if (columnDimension > 2)
@@ -365,8 +407,13 @@ int main(int argc, const char * argv[])
 		targetTable = &g_combinedColumns[columnDimension % 2];
 	}
 
-    
-    // end
-    std::cout << "Finished!" << std::endl;
+    std::cout << "\n\nDone. Found " << g_results.size() << " unique column combination" << (g_results.size() != 1 ? "s" : "") << ": " << std::endl;
+	for (std::vector<ColumnCombination>::iterator c = g_results.begin(); c != g_results.end(); c++)
+	{
+		std::cout << c->toString() << std::endl;
+	}
+
+	g_outputFile.close();
+
     char tempCharacter; std::cin >> tempCharacter;
 }
