@@ -19,14 +19,15 @@
 #include <iomanip>
 
 #ifdef _WIN32
-#define DATA_PATH "../data/testfile_from_lecture.tsv"
+#define DATA_PATH "../data/uniprot.tsv"
 #else
-#define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/testfile_from_lecture.tsv"
+#define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/uniprot_20000rows.tsv"
 #include <inttypes.h>
 #endif
 
 #define VERBOSE
-const float searchDensity = 0; // the bigger the more we throw out
+
+const float searchDensity = 0.0f; // the bigger the more we throw out
 
 typedef std::map<std::string, int> Dictionary;
 
@@ -125,12 +126,12 @@ float g_timeTotal;
 
 int getNumberOfUniques(ColumnVector &cv)
 {
-	int uniques = g_rowCount;
+	int uniques = g_rowCount;//??? funktioniert doch nur fuer 2 oder?
 	for (ColumnVector::iterator set = cv.begin(); set != cv.end(); ++set)
 	{
 		uniques -= (int)set->size();
 	}
-	return uniques;
+	return uniques; // give back number of sets
 }
 
 void reportUniqueColumnCombination(ColumnCombination &c)
@@ -142,13 +143,15 @@ void reportUniqueColumnCombination(ColumnCombination &c)
 	g_outputFile << c.toTabbedString() << std::endl;
 }
 
-std::string timeToString(time_t ms)
+std::string timeToString(time_t readingTime)
 {
+    time_t ms = float(readingTime) / CLOCKS_PER_SEC * 1000;
+    
 	std::stringstream ss;
-	ss << std::setfill('0') << std::setw(2) << (ms/3600000) << ":";
-	ss << std::setfill('0') << std::setw(2) << ((ms%3600000)/60000) << ":";
-	ss << std::setfill('0') << std::setw(2) << std::setprecision(3) << std::fixed << ((ms%60000)/1000) << ".";
-	ss << std::setfill('0') << std::setw(3) << (ms%1000);
+	ss << std::setfill('0') << std::setw(2) << (ms / 3600000) << ":";
+	ss << std::setfill('0') << std::setw(2) << ((ms % 3600000) / 60000) << ":";
+	ss << std::setfill('0') << std::setw(2) << std::setprecision(3) << std::fixed << ((ms % 60000) / 1000) << ".";
+	ss << std::setfill('0') << std::setw(3) << (ms % 1000);
 	return ss.str();
 }
 
@@ -244,7 +247,6 @@ int readColumnsFromFile()
 		}
 
 		//Create a new "clean" column vector based on the current one, ignoring all sets with cardinality 1:
-		int n = 0;
 		for (ColumnVector::iterator it = currentColumnVector.begin(); it != currentColumnVector.end(); it++)
 		{
 			if (it->size() > 1)
@@ -256,19 +258,26 @@ int readColumnsFromFile()
 
 		// determine number of unique values in this column:
 		int uniquesCount = getNumberOfUniques(cleanColumnVector);
-
-		std::cout << "Column " << colIndex << ": " << cleanColumnVector.size() << (cleanColumnVector.size() == 1 ? " set" : " sets") << " and " << uniquesCount << " uniques.";
+        int cleanColumnVectorSize = cleanColumnVector.size();
+        
+		std::cout << "Column " << colIndex << ": " << cleanColumnVectorSize << (cleanColumnVectorSize == 1 ? " set" : " sets") << " and " << uniquesCount << " uniques.";
 
 		if (uniquesCount == g_rowCount)
 		{
 			// drop column, if only containing unique values:
-			reportUniqueColumnCombination(ColumnCombination(colIndex));
+            ColumnCombination c = ColumnCombination(colIndex);
+			reportUniqueColumnCombination(c);
 		}
 		else if (uniquesCount < g_rowCount * searchDensity)
 		{
 			// drop column, if there are too few unique values:
 			std::cout << " => Dropped because of too many duplicates.";
 		}
+//        else if (cleanColumnVectorSize == 1)
+//        {
+//            // drop column, if there are too few unique values:
+//            std::cout << " => Dropped because of setSize is 1."; //
+//        }
 		else
 		{
 			// take column into consideration for later combinations
@@ -279,7 +288,7 @@ int readColumnsFromFile()
 
 		std::cout << std::endl;
 	}
-
+    
 	std::cout << "Finished reading " << g_columnCount << " columns in " << timeToString(clock() - readStartTime) << "." << std::endl;
 
 	g_columnCount = g_columns.size();

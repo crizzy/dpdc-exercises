@@ -35,3 +35,4 @@ exercise4/Exercise4/
 # data files
 uniprot_columns.tsv
 uniprot.tsv
+data/*uniques.tsv
