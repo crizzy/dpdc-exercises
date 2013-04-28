@@ -25,8 +25,8 @@
 #include <inttypes.h>
 #endif
 
-//#define VERBOSE
-const float searchDensity = 0; // the bigger the more we throw out
+#define VERBOSE
+const float searchDensity = 0.1; // the bigger the more we throw out
 
 typedef std::map<std::string, int> Dictionary;
 
@@ -257,8 +257,9 @@ int readColumnsFromFile()
 
 		// determine number of unique values in this column:
 		int uniquesCount = getNumberOfUniques(cleanColumnVector);
-
-		std::cout << "Column " << colIndex << ": " << cleanColumnVector.size() << (cleanColumnVector.size() == 1 ? " set" : " sets") << " and " << uniquesCount << " uniques.";
+        int cleanColumnVectorSize = cleanColumnVector.size();
+        
+		std::cout << "Column " << colIndex << ": " << cleanColumnVectorSize << (cleanColumnVectorSize == 1 ? " set" : " sets") << " and " << uniquesCount << " uniques.";
 
 		if (uniquesCount == g_rowCount)
 		{
@@ -271,6 +272,11 @@ int readColumnsFromFile()
 			// drop column, if there are too few unique values:
 			std::cout << " => Dropped because of too many duplicates.";
 		}
+//        else if (cleanColumnVectorSize == 1)
+//        {
+//            // drop column, if there are too few unique values:
+//            std::cout << " => Dropped because of setSize is 1."; //
+//        }
 		else
 		{
 			// take column into consideration for later combinations
