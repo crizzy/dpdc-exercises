@@ -18,7 +18,7 @@
 #include <time.h>
 
 #ifdef _WIN32
-#define DATA_PATH "../data/example.tsv"
+#define DATA_PATH "../data/uniprot.tsv"
 #else
 #define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/uniprot.tsv"
 #include <inttypes.h>
@@ -428,7 +428,7 @@ int main(int argc, const char * argv[])
 	std::cout << "Building 2-dimensional column combinations..." << std::endl;
 	int columnCount = g_columns.size();
 	std::set<int> intersection;
-	bool isUnique = false;
+
 	for (int leftColumnIndex = 0; leftColumnIndex < columnCount; ++leftColumnIndex)
 	{
 		for (int rightColumnIndex = leftColumnIndex+1; rightColumnIndex < columnCount; ++rightColumnIndex)
