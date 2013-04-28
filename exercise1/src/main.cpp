@@ -18,17 +18,18 @@
 #include <time.h>
 
 #ifdef _WIN32
-#define DATA_PATH "../data/uniprot.tsv"
+#define DATA_PATH "../data/uniprot_20rows.tsv"
 #else
 #define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/testfile_from_lecture.tsv"
 #include <inttypes.h>
 #endif
 
-#define VERBOSE
+//#define VERBOSE
+const float searchDensity = 0; // the bigger the more we throw out
 
 typedef std::map<std::string, int> Dictionary;
 
-class ColumnCombination : public std::set<int>
+class ColumnCombination : public std::vector<int>
 {
 	// A column combination is a set of column indices.
 
@@ -42,14 +43,14 @@ public:
 	ColumnCombination(int index)
 	{
 		//creates a column combination containing only one index
-		insert(index);
+		push_back(index);
 	}
 
 	ColumnCombination(int firstIndex, int secondIndex)
 	{
 		//creates a column combination containing two indices
-		insert(firstIndex);
-		insert(secondIndex);
+		push_back(firstIndex);
+		push_back(secondIndex);
 	}
 
 	std::string toString()
@@ -96,13 +97,13 @@ public:
 	}
 };
 
-class ColumnVector : public std::vector<std::set<int>>
+class ColumnVector : public std::vector<std::vector<int>>
 {
 	// A column vector is a vector of sets, containing the indices of duplicates
 
 public:
 
-	ColumnCombination original;
+	ColumnCombination combination;
 	int uniques;
 };
 
@@ -117,8 +118,6 @@ long long g_columnCount = 0;
 std::map<int, ColumnCombination> g_costs;
 int g_rowCount = 1000000000;//important: must be initialized to artificially high value
 
-const float searchDensity = 0; // as bigger as more we throw out
-
 float g_timeForIntersection;
 float g_timeTotal;
 
@@ -126,9 +125,9 @@ float g_timeTotal;
 int getNumberOfUniques(ColumnVector &cv)
 {
 	int uniques = g_rowCount;
-	for (int setId = 0; setId < cv.size(); setId++)
+	for (ColumnVector::iterator set = cv.begin(); set != cv.end(); ++set)
 	{
-		uniques -= cv[setId].size();
+		uniques -= (int)set->size();
 	}
 	return uniques;
 }
@@ -142,13 +141,23 @@ void reportUniqueColumnCombination(ColumnCombination &c)
 	g_outputFile << c.toTabbedString() << std::endl;
 }
 
-void reportIntersectionFinished(int uniquesCount, int setSize)
+std::string durationToString(time_t duration)
 {
-    std::cout << " " << setSize << (setSize == 1 ? " set" : " sets") << " and " << uniquesCount << " uniques.";
+	std::stringstream ss;
+	if (duration >= 24*60*60*1000)
+		ss << (duration / (24*60*60*1000)) << ":";
+	if (duration >= 60*60*1000)
+		ss << ((duration % (24*60*60*1000)) / (60*60*1000)) << ":";
+	if (duration >= 60*1000)
+		ss << ((duration % (60*60*1000)) / (60*1000)) << ":";
+
+	ss << ((duration % (60*1000)) / 1000.0f);
+	return ss.str();
 }
 
 int readColumnsFromFile()
 {
+	time_t readStartTime = clock();
 	std::ifstream dataFileOnDisc(DATA_PATH);
 	if (!dataFileOnDisc.is_open())
 	{
@@ -226,20 +235,20 @@ int readColumnsFromFile()
 			{
 				// value has not been found in this column
 				dictionary[tableValue] = dictionarySize++;
-				std::set<int> s;
-				s.insert(rowIndex);
+				std::vector<int> s;
+				s.push_back(rowIndex);
 				currentColumnVector.push_back(s);
 			}
 			else
 			{
 				// value is already part of the column
-				currentColumnVector[dictionaryEntry->second].insert(rowIndex);
+				currentColumnVector[dictionaryEntry->second].push_back(rowIndex);
 			}
 		}
 
 		//Create a new "clean" column vector based on the current one, ignoring all sets with cardinality 1:
 		int n = 0;
-		for (std::vector<std::set<int>>::iterator it = currentColumnVector.begin(); it != currentColumnVector.end(); it++)
+		for (ColumnVector::iterator it = currentColumnVector.begin(); it != currentColumnVector.end(); it++)
 		{
 			if (it->size() > 1)
 				cleanColumnVector.push_back(*it);
@@ -266,7 +275,7 @@ int readColumnsFromFile()
 		else
 		{
 			// take column into consideration for later combinations
-			cleanColumnVector.original.insert(colIndex);
+			cleanColumnVector.combination.push_back(colIndex);
 			cleanColumnVector.uniques = uniquesCount;
 			g_columns.push_back(cleanColumnVector);
 		}
@@ -274,7 +283,7 @@ int readColumnsFromFile()
 		std::cout << std::endl;
 	}
 
-	std::cout << "Finished reading " << g_columnCount << " columns." << std::endl;
+	std::cout << "Finished reading " << g_columnCount << " columns in " << durationToString(clock() - readStartTime) << "." << std::endl;
 
 	g_columnCount = g_columns.size();
 
@@ -286,7 +295,7 @@ void printTable()
 	size_t colCount = g_columns.size();
 	for (int col = 0; col < colCount; col++)
 	{
-		std::cout << "Column " << g_columns[col].original.toString() << ": ";
+		std::cout << "Column " << g_columns[col].combination.toString() << ": ";
 
 		int uniques = getNumberOfUniques(g_columns[col]);
 
@@ -296,7 +305,7 @@ void printTable()
 			std::cout << "{";
 			for (int duplicate = 0; duplicate < g_columns[col].size(); duplicate++)
 			{
-				std::set<int>::iterator c = g_columns[col][duplicate].begin();
+				std::vector<int>::iterator c = g_columns[col][duplicate].begin();
 				if (c != g_columns[col][duplicate].end())
 					std::cout << "{" << (*c);
 				while (++c != g_columns[col][duplicate].end())
@@ -319,7 +328,6 @@ void printTable()
 
 int main(int argc, const char * argv[])
 {
-    g_timeForIntersection = 0.;
     time_t beginTimeTotal = clock();
     
     // read stuff
@@ -328,13 +336,13 @@ int main(int argc, const char * argv[])
 
 	std::cout << "Operating on a subset of " << g_columnCount << " columns." << std::endl;
     
-	int columnCount = g_columns.size();
+	int columnCount = (int)g_columns.size();
 
-	std::set<int> intersection;
+	std::vector<int> intersection;
 	std::vector<ColumnVector> *sourceTable = &g_columns, *targetTable = &g_combinedColumns[1];
-	int leftSetId, rightSetId;
 	int uniques;
 	time_t timeforOneDimension;
+	ColumnVector *rightColumnVector;
 
 	for (int columnDimension = 2; columnDimension < g_columnCount; columnDimension++)
 	{
@@ -342,23 +350,24 @@ int main(int argc, const char * argv[])
 		timeforOneDimension = clock();
 		for (std::vector<ColumnVector>::iterator leftColumnVector = sourceTable->begin(); leftColumnVector != sourceTable->end(); leftColumnVector++)
 		{
-			for (int rightColumnIndex = leftColumnVector->original.maxIndex(); rightColumnIndex < columnCount; ++rightColumnIndex)
+			for (int rightColumnIndex = leftColumnVector->combination.maxIndex(); rightColumnIndex < columnCount; ++rightColumnIndex)
 			{
+				ColumnVector intersectedColumnVector;
+				rightColumnVector = &g_columns[rightColumnIndex];
+
 				#ifdef VERBOSE
-					std::cout << "\nIntersecting " << leftColumnVector->original.toString() << " with " << g_columns[rightColumnIndex].original.toString() << "...";
+					std::cout << "\nIntersecting " << leftColumnVector->combination.toString() << " with " << rightColumnVector->combination.toString() << "...";
 				#endif
 
-				ColumnVector intersectedColumnVector;
-
-				for (leftSetId = 0; leftSetId < leftColumnVector->size(); ++leftSetId)
+				for (ColumnVector::iterator leftSet = leftColumnVector->begin(); leftSet != leftColumnVector->end(); ++leftSet)
 				{
-					for (rightSetId = 0; rightSetId < g_columns[rightColumnIndex].size(); ++rightSetId)
+					for (ColumnVector::iterator rightSet = rightColumnVector->begin(); rightSet != rightColumnVector->end(); ++rightSet)
 					{
 						std::set_intersection(
-							(*leftColumnVector)[leftSetId].begin(),
-							(*leftColumnVector)[leftSetId].end(),
-							g_columns[rightColumnIndex][rightSetId].begin(),
-							g_columns[rightColumnIndex][rightSetId].end(),
+							leftSet->begin(),
+							leftSet->end(),
+							rightSet->begin(),
+							rightSet->end(),
 							std::inserter(intersection, intersection.begin())
 						);
 						if (intersection.size() > 1)
@@ -367,27 +376,27 @@ int main(int argc, const char * argv[])
 					}
 				}
 
-				#ifdef VERBOSE
-					reportIntersectionFinished(uniques, intersectedColumnVector.size());
-				#endif
-
 				uniques = getNumberOfUniques(intersectedColumnVector);
 
+				#ifdef VERBOSE
+					std::cout << " " << intersectedColumnVector.size() << (intersectedColumnVector.size() == 1 ? " set" : " sets") << " and " << uniques << " uniques.";
+				#endif
+
 				// only add the resulting column vector to our search set if it includes some improvement:
-				if (uniques != std::max<int>(leftColumnVector->uniques, g_columns[rightColumnIndex].uniques))
+				if (uniques != std::max<int>(leftColumnVector->uniques, rightColumnVector->uniques))
 				{
 					std::set_union(
-						(*leftColumnVector).original.begin(),
-						(*leftColumnVector).original.end(),
-						g_columns[rightColumnIndex].original.begin(),
-						g_columns[rightColumnIndex].original.end(),
-						std::inserter(intersectedColumnVector.original, intersectedColumnVector.original.begin())
+						leftColumnVector->combination.begin(),
+						leftColumnVector->combination.end(),
+						rightColumnVector->combination.begin(),
+						rightColumnVector->combination.end(),
+						std::back_inserter(intersectedColumnVector.combination)
 					);
 
 					// don't add the column vector if the created combination is a unique one
 					if (intersectedColumnVector.size() == 0)
 					{
-						reportUniqueColumnCombination(intersectedColumnVector.original);
+						reportUniqueColumnCombination(intersectedColumnVector.combination);
 						continue;
 					}
 
@@ -396,7 +405,7 @@ int main(int argc, const char * argv[])
 				}
 			}
 		}
-		std::cout << "\nDuration: " << (clock() - timeforOneDimension) << std::endl;
+		std::cout << "\nDuration: " << durationToString(clock() - timeforOneDimension) << std::endl;
 
 		// clear source table:
 		if (columnDimension > 2)
@@ -407,7 +416,7 @@ int main(int argc, const char * argv[])
 		targetTable = &g_combinedColumns[columnDimension % 2];
 	}
 
-    std::cout << "\n\nDone. Found " << g_results.size() << " unique column combination" << (g_results.size() != 1 ? "s" : "") << ": " << std::endl;
+    std::cout << "\n\nDone in " << durationToString(clock() - beginTimeTotal) << ". Found " << g_results.size() << " unique column combination" << (g_results.size() != 1 ? "s" : "") << ": " << std::endl;
 	for (std::vector<ColumnCombination>::iterator c = g_results.begin(); c != g_results.end(); c++)
 	{
 		std::cout << c->toString() << std::endl;
