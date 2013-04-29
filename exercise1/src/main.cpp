@@ -95,38 +95,139 @@ int g_rowCount = 1000000000;//important: must be initialized to artificially hig
 float g_timeForIntersection;
 float g_timeTotal;
 
-
+#define BUFFER_SIZE 128000
 
 std::vector<ColumnCombination> buildLikelyCombinations() // hardcoded from 20000 run till {8,14} with {175}
 {
-    std::vector<ColumnCombination> combination;
-//    combination.push_back
-//    0
-//    1
-//    7	12
-//    10	12
-//    12	14
-//    2	7	12
-//    2	10	12
-//    2	12	14
-//    3	7	12
-//    3	10	12
-//    3	12	14
-//    5	7	12
-//    5	10	12
-//    5	12	14
-//    7	11	13
-//    7	13	16
-//    7	13	17
-//    7	13	18
-//    7	13	20
-//    7	13	23
-//    7	13	41
-//    7	13	45
-//    7	13	70
-//    7	13	79
-//    8	12	14
+    std::vector<ColumnCombination> combinations;
+    
+	// read column names:
+	std::ifstream I(RESULT_PATH);
+	if (!I.is_open())
+	{
+		std::cout << "Cannot find results file." << std::endl;
+		return std::vector<ColumnCombination>() ;
+	}
+    
+	char rowBuffer[BUFFER_SIZE];
+	char cellBuffer[BUFFER_SIZE];
+    
+	for (int rowIndex = 0; !I.eof(); rowIndex++)
+	{
+		// read a whole line into the buffer:
+		I.getline(rowBuffer, BUFFER_SIZE, '\n');
+		if (strlen(rowBuffer) == 0)
+			break;
+        
+		std::stringstream s_rowBuffer(rowBuffer);
+        
+		for (int colIndex = 0; !s_rowBuffer.eof(); colIndex++)
+		{
+            if (colIndex==0)
+            {
+                ColumnCombination combination = ColumnCombination();
+                combinations.push_back(combination);
+            }
+			s_rowBuffer.getline(cellBuffer, BUFFER_SIZE, '\t');
+            int combinationElement = atoi(cellBuffer);
+			combinations.at(rowIndex).push_back((combinationElement));
+			std::cout << cellBuffer << "\t";
+		}    
+		std::cout << std::endl;
+    }
+    
+    return combinations;
 }
+
+int checkLikelyCombinations()
+{
+    
+    // read in combination from result file
+    std::vector<ColumnCombination> combinations = buildLikelyCombinations();
+/////////////////////
+    
+    // read in strings of data file
+    std::vector<std::vector<std::string>> columns;
+
+	for (int i = 0; i<223; i++)
+	{
+        std::vector<std::string> column = std::vector<std::string>();
+		columns.push_back(column);
+	}
+    
+	// read column names:
+	std::ifstream I(DATA_PATH);
+	if (!I.is_open())
+	{
+		std::cout << "Cannot find file \"uniprot.tsv\"" << std::endl;
+		return 1;
+	}
+    
+	char rowBuffer[BUFFER_SIZE];
+	char cellBuffer[BUFFER_SIZE];
+    
+	for (int rowIndex = 0; !I.eof(); rowIndex++)
+	{
+		// read a whole line into the buffer:
+		I.getline(rowBuffer, BUFFER_SIZE, '\n');
+		if (strlen(rowBuffer) == 0)
+			break;
+        
+		std::stringstream s_rowBuffer(rowBuffer);
+        
+		for (int colIndex = 0; !s_rowBuffer.eof(); colIndex++)
+		{
+			s_rowBuffer.getline(cellBuffer, BUFFER_SIZE, '\t');
+			columns.at(colIndex).push_back(cellBuffer);
+			//std::cout << cellBuffer << "\t";
+		}
+		//std::cout << std::endl;
+		if (rowIndex % 54000 == 0)
+			std::cout << "read " << rowIndex << " rows." << std::endl;
+        
+	}
+    
+
+	std::cout << "Finished reading strings data file!" << std::endl;
+    
+    //check combinations
+    
+    for (int combIndex = 0; combIndex < combinations.size(); combIndex++)
+    {
+        std::vector<std::string> columnsConcatenated;
+        for (int rowIndex = 0; rowIndex < columns[0].size(); rowIndex++)
+        {
+            std::stringstream rowString;
+            for (int colIndex = 0; colIndex < combinations[combIndex].size(); colIndex++)
+            {
+                int columnConsidered = combinations[combIndex][colIndex];
+                rowString << columns[columnConsidered][rowIndex] << "/t";
+            }
+            
+            columnsConcatenated.push_back(rowString.str());
+        }
+        
+        // check if all strings are unique
+        
+        size_t sizeBefore = columnsConcatenated.size();
+        std::vector<std::string>::iterator it;
+        it = std::unique (columnsConcatenated.begin(), columnsConcatenated.end());
+        columnsConcatenated.resize( std::distance(columnsConcatenated.begin(),it) );
+        size_t sizeAfter = columnsConcatenated.size();
+        if (sizeBefore == sizeAfter)
+            std::cout << combinations[combIndex].toString() << " is unique." << std::endl;
+        else
+            std::cout << combinations[combIndex].toString() << " is not unique." << std::endl;
+
+    }
+    std::cout << "Checking done." << std::endl;
+    // wait
+    char c; std::cin >> c;
+    return 0;
+}
+
+
+
 
 int getNumberOfUniques(ColumnVector &cv)
 {
@@ -352,6 +453,11 @@ void printTable()
 
 int main(int argc, const char * argv[])
 {
+#ifdef CHECK_RESULT
+    checkLikelyCombinations();
+    return 0;
+#endif
+    
     time_t beginTimeTotal = clock();
    
     // read stuff
