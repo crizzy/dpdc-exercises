@@ -218,6 +218,7 @@ int checkLikelyCombinations()
             std::cout << combinations[combIndex].toString() << " is unique." << std::endl;
         else
             std::cout << combinations[combIndex].toString() << " is not unique." << std::endl;
+        columnsConcatenated.clear();
 
     }
     std::cout << "Checking done." << std::endl;
