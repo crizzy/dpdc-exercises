@@ -215,7 +215,7 @@ int checkLikelyCombinations()
         columnsConcatenated.resize( std::distance(columnsConcatenated.begin(),it) );
         size_t sizeAfter = columnsConcatenated.size();
         if (sizeBefore == sizeAfter)
-            std::cout << combinations[combIndex].toString() << " is unique." << std::endl;
+            std::cout << combinations[combIndex].toString() << " is unique!!!!!!!!!!" << std::endl;
         else
             std::cout << combinations[combIndex].toString() << " is not unique." << std::endl;
         columnsConcatenated.clear();
