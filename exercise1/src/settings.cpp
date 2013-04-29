@@ -21,7 +21,7 @@
 #ifdef _WIN32
 #define DATA_PATH "../data/uniprot.tsv"
 #else
-#define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/uniprot_700rows.tsv"
+#define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/uniprot.tsv"
 #include <inttypes.h>
 #endif
 
@@ -31,10 +31,10 @@
 //uniprot_20000rows.tsv_uniques_14, 103 with 176_density0.txt
 //uniprot_20000rows.tsv_uniques_up to 8-14 with 175 at density 0.0.txt
 #else
-#define RESULT_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/results/uniprot_20000rows.tsv_uniques_up to 8-14 with 175 at density 0.0.txt"
+#define RESULT_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/results/uniprot_700rows.tsv_uniques_up_to_4er_combinations_sensity0.0.txt"
 #endif
 
-//#define CHECK_RESULT
+#define CHECK_RESULT
 
 
 //#define VERBOSE
