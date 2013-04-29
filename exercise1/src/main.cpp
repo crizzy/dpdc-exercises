@@ -1,35 +1,5 @@
-//
-//  main.cpp
-//  Exercise1
-//
-//  Created by Markus Hinsche on 4/23/13.
-//  Copyright (c) 2013 Markus Hinsche. All rights reserved.
-//
+#include "settings.cpp"
 
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <vector>
-#include <list>
-#include <set>
-#include <iterator>		// std::inserter
-#include <algorithm>    // std::unique, std::distance std::intersection std::sort
-#include <map>
-#include <time.h>
-#include <iomanip>
-
-#ifdef _WIN32
-#define DATA_PATH "../data/uniprot.tsv"
-#else
-#define DATA_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/data/uniprot_20000rows.tsv"
-#include <inttypes.h>
-#endif
-
-#define VERBOSE
-
-const float searchDensity = 0.0f; // the bigger the more we throw out
-
-typedef std::map<std::string, int> Dictionary;
 
 class ColumnCombination : public std::vector<int>
 {
@@ -87,7 +57,7 @@ public:
 		return columnCombinationString.str();
 	}
 
-	int maxIndex()
+	int maxIndex() // schliesst aus das wir keine Kombination doppelt machen TODO check if too much is pruned
 	{
 		int max = 0;
 		for (ColumnCombination::iterator c = begin(); c != end(); c++)
@@ -109,6 +79,8 @@ public:
 	int uniques;
 };
 
+typedef std::map<std::string, int> Dictionary;
+
 // global vars
 std::vector<ColumnVector> g_columns;//all single columns
 std::vector<ColumnVector> g_combinedColumns[2];//column combinations
@@ -123,6 +95,38 @@ int g_rowCount = 1000000000;//important: must be initialized to artificially hig
 float g_timeForIntersection;
 float g_timeTotal;
 
+
+
+std::vector<ColumnCombination> buildLikelyCombinations() // hardcoded from 20000 run till {8,14} with {175}
+{
+    std::vector<ColumnCombination> combination;
+//    combination.push_back
+//    0
+//    1
+//    7	12
+//    10	12
+//    12	14
+//    2	7	12
+//    2	10	12
+//    2	12	14
+//    3	7	12
+//    3	10	12
+//    3	12	14
+//    5	7	12
+//    5	10	12
+//    5	12	14
+//    7	11	13
+//    7	13	16
+//    7	13	17
+//    7	13	18
+//    7	13	20
+//    7	13	23
+//    7	13	41
+//    7	13	45
+//    7	13	70
+//    7	13	79
+//    8	12	14
+}
 
 int getNumberOfUniques(ColumnVector &cv)
 {
@@ -140,7 +144,20 @@ void reportUniqueColumnCombination(ColumnCombination &c)
 		std::cout << " => Dropped, because column combination is unique: " << c.toString();
 	#endif
 	g_results.push_back(c);
-	g_outputFile << c.toTabbedString() << std::endl;
+	
+    // open
+    g_outputFile.open(std::string(DATA_PATH) + std::string("_uniques.txt"), std::ios::out | std::ios::app);
+	if (!g_outputFile.is_open())
+	{
+		std::cout << "Cannot write to output file \"" << std::string(DATA_PATH) << "_uniques.txt\"" << std::endl;
+		return;
+	}
+    
+    // write
+    g_outputFile << c.toTabbedString() << std::endl;
+    
+    // close
+    g_outputFile.close();
 }
 
 std::string timeToString(time_t readingTime)
@@ -172,6 +189,7 @@ int readColumnsFromFile()
 		std::cout << "Cannot write to output file \"" << std::string(DATA_PATH) << "_uniques.txt\"" << std::endl;
 		return 1;
 	}
+    g_outputFile.close();
     
 	std::string tableValue;
 	Dictionary::iterator dictionaryEntry;
@@ -258,7 +276,7 @@ int readColumnsFromFile()
 
 		// determine number of unique values in this column:
 		int uniquesCount = getNumberOfUniques(cleanColumnVector);
-        int cleanColumnVectorSize = cleanColumnVector.size();
+        size_t cleanColumnVectorSize = cleanColumnVector.size();
         
 		std::cout << "Column " << colIndex << ": " << cleanColumnVectorSize << (cleanColumnVectorSize == 1 ? " set" : " sets") << " and " << uniquesCount << " uniques.";
 
@@ -345,6 +363,8 @@ int main(int argc, const char * argv[])
 	int columnCount = (int)g_columns.size();
 
 	std::vector<int> intersection;
+    std::vector<int>::iterator temp_leftSetBegin;
+    std::vector<int>::iterator temp_leftSetEnd;
 	std::vector<ColumnVector> *sourceTable = &g_columns, *targetTable = &g_combinedColumns[1];
 	int uniques;
 	time_t timeforOneDimension;
@@ -361,21 +381,25 @@ int main(int argc, const char * argv[])
 				ColumnVector intersectedColumnVector;
 				rightColumnVector = &g_columns[rightColumnIndex];
 
-				#ifdef VERBOSE
-					std::cout << "\nIntersecting " << leftColumnVector->combination.toString() << " with " << rightColumnVector->combination.toString() << "...";
-				#endif
+
+                #ifdef VERBOSE
+                    std::cout << "\nIntersecting " << leftColumnVector->combination.toString() << " with " << rightColumnVector->combination.toString() << "...";
+                #endif
 
 				for (ColumnVector::iterator leftSet = leftColumnVector->begin(); leftSet != leftColumnVector->end(); ++leftSet)
 				{
+                    temp_leftSetBegin = leftSet->begin();
+                    temp_leftSetEnd = leftSet->end();
 					for (ColumnVector::iterator rightSet = rightColumnVector->begin(); rightSet != rightColumnVector->end(); ++rightSet)
 					{
-						std::set_intersection(
-							leftSet->begin(),
-							leftSet->end(),
+                        std::set_intersection(
+							temp_leftSetBegin,
+							temp_leftSetEnd,
 							rightSet->begin(),
 							rightSet->end(),
 							std::back_inserter(intersection)
 						);
+                        
 						if (intersection.size() > 1)
 							intersectedColumnVector.push_back(intersection);
 						intersection.clear();
@@ -432,3 +456,10 @@ int main(int argc, const char * argv[])
 
     char tempCharacter; std::cin >> tempCharacter;
 }
+
+
+// TODO
+// ordered list ordered by complexity
+// check union
+// dont throw away 3er comb (if(max) auskommentieren)  // why doesnt he do big combinations: he is done after 6...
+//do on 20000 file, than check those on big file  //run on small file, push_back
