@@ -28,16 +28,16 @@
 #endif
 
 #ifdef _WIN32
-#define RESULT_PATH "../results/uniprot_10000rows.tsv_uniquesSensitivity0.02.txt"
+#define RESULT_PATH "../results/uniprot_20000rows.tsv_uniques_without_ifmax out_density0.01.txt"
 //uniprot_20000rows.tsv_uniques_density0.01.txt
 //uniprot_20000rows.tsv_uniques_14, 103 with 176_density0.txt
 //uniprot_20000rows.tsv_uniques_up to 8-14 with 175 at density 0.0.txt
 #else
-#define RESULT_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/results/uniprot_700rows.tsv_uniques_up_to_4er_combinations_sensity0.0.txt"
+#define RESULT_PATH "/Users/Markus/Development/C++/dpdc-exercises/exercise1/results/uniprot_20000rows.tsv_uniques_without_ifmax out_density0.01.txt"
 #endif
 
 
 
 //#define VERBOSE
-const float searchDensity = 0.02; // the bigger the more we throw out
+const float searchDensity = 0.01; // the bigger the more we throw out
 
