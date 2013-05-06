@@ -41,7 +41,7 @@ bool isInclusionDependency(Column *dependent, Column *referenced)
 		{
 			return false;//No IND
 		}
-
+		//if *dep > *ref:
 		do {
 			ref++;
 
@@ -125,7 +125,7 @@ int main(int argc, const char *argv[])
 	}
 	delete columnSet;
 
-	std::cout << "Finished reading after " << ((clock() - start_time) / CLOCKS_PER_SEC) << "   Total number of columns: " << columns.size() << std::endl;
+	std::cout << "Finished reading after " << timeToString(clock() - start_time) << "   Total number of columns: " << columns.size() << std::endl;
 
 	//do computation
 	std::vector<std::thread> threads;
