@@ -36,3 +36,6 @@ exercise4/Exercise4/
 uniprot_columns.tsv
 uniprot.tsv
 data/*uniques.tsv
+
+#exercise2
+exercise2/data/pdb/*
