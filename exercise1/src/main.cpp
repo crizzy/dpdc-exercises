@@ -86,6 +86,7 @@ std::vector<ColumnVector> g_columns;//all single columns
 std::vector<ColumnVector> g_combinedColumns[2];//column combinations
 std::vector<ColumnCombination> g_results;
 std::ofstream g_outputFile;
+std::map<int, int> g_goodColumns;
 
 long long g_columnCount = 0;
 
@@ -393,11 +394,11 @@ int readColumnsFromFile()
 			// drop column, if there are too few unique values:
 			std::cout << " => Dropped because of too many duplicates.";
 		}
-//        else if (cleanColumnVectorSize == 1)
-//        {
-//            // drop column, if there are too few unique values:
-//            std::cout << " => Dropped because of setSize is 1."; //
-//        }
+		else if (g_goodColumns.find(colIndex) == g_goodColumns.end())
+		{
+			//skip this column
+			std::cout << " => Skipped.";
+		}
 		else
 		{
 			// take column into consideration for later combinations
@@ -460,6 +461,17 @@ int main(int argc, const char * argv[])
 #endif
     
     time_t beginTimeTotal = clock();
+
+
+	g_goodColumns[2];
+	g_goodColumns[7];
+	g_goodColumns[12];
+	g_goodColumns[13];
+	g_goodColumns[20];
+	g_goodColumns[37];
+	g_goodColumns[45];
+	g_goodColumns[79];
+	g_goodColumns[185];
    
     // read stuff
     readColumnsFromFile();
@@ -520,8 +532,8 @@ int main(int argc, const char * argv[])
 				#endif
 
 				// only add the resulting column vector to our search set if it includes some improvement:
-				if (uniques != std::max<int>(leftColumnVector->uniques, rightColumnVector->uniques))
-				{
+				//if (uniques != std::max<int>(leftColumnVector->uniques, rightColumnVector->uniques))
+				//{
 					std::set_union(
 						leftColumnVector->combination.begin(),
 						leftColumnVector->combination.end(),
@@ -539,7 +551,7 @@ int main(int argc, const char * argv[])
 
 					intersectedColumnVector.uniques = uniques;
 					targetTable->push_back(intersectedColumnVector);
-				}
+				//}
 			}
 		}
 		std::cout << "\nDuration: " << timeToString(clock() - timeforOneDimension) << std::endl;

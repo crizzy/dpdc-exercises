@@ -18,7 +18,7 @@
 #include <time.h>
 #include <iomanip>
 
-#define CHECK_RESULT // change DATA_PATH to uniport.tsv if enabled
+//#define CHECK_RESULT // change DATA_PATH to uniport.tsv if enabled
 
 #ifdef _WIN32
 #define DATA_PATH "../data/uniprot.tsv"
@@ -39,5 +39,5 @@
 
 
 //#define VERBOSE
-const float searchDensity = 0.02; // the bigger the more we throw out
+const float searchDensity = 0.0; // the bigger the more we throw out
 
