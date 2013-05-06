@@ -98,7 +98,8 @@ float g_timeTotal;
 
 #define BUFFER_SIZE 128000
 
-std::vector<ColumnCombination> buildLikelyCombinations() // hardcoded from 20000 run till {8,14} with {175}
+std::vector<ColumnCombination> buildLikelyCombinations()
+// doesn't work! // check with bash>> cut -f8,13,14,21,38,46,186 uniprot.tsv | sort  | uniq -d | wc -l
 {
     std::vector<ColumnCombination> combinations;
     
@@ -121,8 +122,8 @@ std::vector<ColumnCombination> buildLikelyCombinations() // hardcoded from 20000
 			break;
         
 		std::stringstream s_rowBuffer(rowBuffer);
-        
-		for (int colIndex = 0; !s_rowBuffer.eof(); colIndex++)
+		
+        for (int colIndex = 0; !s_rowBuffer.eof(); colIndex++)
 		{
             if (colIndex==0)
             {
@@ -164,21 +165,24 @@ int checkLikelyCombinations()
 		return 1;
 	}
     
-	char rowBuffer[BUFFER_SIZE];
-	char cellBuffer[BUFFER_SIZE];
+    std::string rowBuffer;
+    std::string cellBuffer;
     
 	for (int rowIndex = 0; !I.eof(); rowIndex++)
 	{
 		// read a whole line into the buffer:
-		I.getline(rowBuffer, BUFFER_SIZE, '\n');
-		if (strlen(rowBuffer) == 0)
+        std::getline(I,rowBuffer, '\n');
+		if (rowBuffer.empty())
 			break;
         
 		std::stringstream s_rowBuffer(rowBuffer);
         
+        if (s_rowBuffer.str().size() > BUFFER_SIZE -2)
+            std::cout << "Achtung zu gross" << std::endl;
+        
 		for (int colIndex = 0; !s_rowBuffer.eof(); colIndex++)
 		{
-			s_rowBuffer.getline(cellBuffer, BUFFER_SIZE, '\t');
+            std::getline(s_rowBuffer,cellBuffer, '\t');
 			columns.at(colIndex).push_back(cellBuffer);
 			//std::cout << cellBuffer << "\t";
 		}
