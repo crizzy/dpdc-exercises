@@ -40,4 +40,4 @@ private:
 	int m_columnId;
 };
 
-#endif COLUMN_H_DPDC
+#endif //COLUMN_H_DPDC

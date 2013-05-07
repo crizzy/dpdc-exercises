@@ -25,8 +25,8 @@ private:
 
 	int m_tableId;
 
-	inline void appendValue(std::string &value, int columnIndex);
+	inline void appendValue(std::string value, int columnIndex);
 
 };
 
-#endif TABLE_H_DPDC
+#endif // TABLE_H_DPDC
