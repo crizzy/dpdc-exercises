@@ -7,11 +7,15 @@
 #include "Table.h"
 #include "Dictionary.h"
 
+#define FILE_COUNT 105
+#define MAX_TABLE_ID FILE_COUNT-1
+
 std::ofstream resultsFile("D:/Daten/pdb/inds.tsv");
+std::mutex resultsFileMutex;
 
 std::string timeToString(time_t readingTime)
 {
-    time_t ms = float(readingTime) / CLOCKS_PER_SEC * 1000;
+    time_t ms = 1000 * readingTime / CLOCKS_PER_SEC;
     
 	std::stringstream ss;
 	ss << std::setfill('0') << std::setw(2) << (ms / 3600000) << ":";
@@ -21,7 +25,7 @@ std::string timeToString(time_t readingTime)
 	return ss.str();
 }
 
-bool isInclusionDependency(Column *dependent, Column *referenced)
+void checkInclusionDependency(Column *dependent, Column *referenced)
 {
 	Column::iterator dep = dependent->begin();
 	Column::iterator ref = referenced->begin();
@@ -29,7 +33,7 @@ bool isInclusionDependency(Column *dependent, Column *referenced)
 	while (dep != dependent->end())
 	{
 		if (ref == referenced->end())
-			return false; //No IND
+			return; //No IND
 
 		if (*dep == *ref)
 		{
@@ -39,104 +43,142 @@ bool isInclusionDependency(Column *dependent, Column *referenced)
 		}
 		if (*dep < *ref)
 		{
-			return false;//No IND
+			return;//No IND
 		}
 		//if *dep > *ref:
 		do {
 			ref++;
 
 			if (ref == referenced->end())
-				return false;//No IND
+				return;//No IND
 		} while (*dep > *ref);
 
 		if (*dep != *ref)
-			return false;//No IND	
+			return;//No IND	
 	}
-	return true;
+	
+	// Found IND!
+	resultsFileMutex.lock();
+	resultsFile << "t" << std::setfill('0') << std::setw(3) << dependent->tableId()
+	<< "[c" << std::setfill('0') << std::setw(3) << dependent->columnId()
+	<< "]\tt" << std::setfill('0') << std::setw(3) << referenced->tableId()
+	<< "[c" << std::setfill('0') << std::setw(3) << referenced->columnId() << "]" << std::endl;
+	resultsFileMutex.unlock();
 }
 
-int g_leftIndex = 0;
-std::mutex g_leftIndexMutex;
-std::mutex resultsFileMutex;
-
-void findInclusionDependencies(std::vector<Column*> &columns)
+void checkInclusionDependenciesInBothDirections(Column *first, Column *second)
 {
-	g_leftIndexMutex.lock();
-	for (int leftIndex = g_leftIndex++; leftIndex < columns.size(); leftIndex = g_leftIndex++)
-	{
-		g_leftIndexMutex.unlock();
+	if (first->size() > second->size())
+		return checkInclusionDependency(second, first);
+	return checkInclusionDependency(first, second);
+}
 
-		for (int rightIndex = leftIndex+1; rightIndex < columns.size(); rightIndex++)
+unsigned int g_tablesChecked = 0;
+std::mutex g_tablesCheckedMutex;
+Table *g_tables[FILE_COUNT];
+unsigned int g_tablesRead = 0;
+std::mutex g_tablesReadMutex;
+
+void findInclusionDependencies()
+{
+
+	Table *rightTable;
+	unsigned int leftTableId, rightTableId;
+	int rightColumn, leftColumn;
+
+	while (true)
+	{
+		g_tablesCheckedMutex.lock();
+		rightTableId = g_tablesChecked++;
+		g_tablesCheckedMutex.unlock();
+
+		if (rightTableId > MAX_TABLE_ID)
+			return;
+
+		g_tablesReadMutex.lock();
+		while (rightTableId >= g_tablesRead)
 		{
-			if (isInclusionDependency(columns[leftIndex], columns[rightIndex]))
+			g_tablesReadMutex.unlock();
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			g_tablesReadMutex.lock();
+		}
+		g_tablesReadMutex.unlock();
+
+		rightTable = g_tables[rightTableId];
+
+		for (leftTableId = 0; leftTableId < rightTableId; leftTableId++)
+		{
+			for (rightColumn = 0; rightColumn < rightTable->size(); rightColumn++)
 			{
-				resultsFileMutex.lock();
-				resultsFile << "t" << std::setfill('0') << std::setw(3) << columns[leftIndex]->tableId()
-				<< "[c" << std::setfill('0') << std::setw(3) << columns[leftIndex]->columnId()
-				<< "]\tt" << std::setfill('0') << std::setw(3) << columns[rightIndex]->tableId()
-				<< "[c" << std::setfill('0') << std::setw(3) << columns[rightIndex]->columnId() << "]" << std::endl;
-				resultsFileMutex.unlock();
+				for (leftColumn = 0; leftColumn < g_tables[leftTableId]->size(); leftColumn++)
+				{
+					checkInclusionDependenciesInBothDirections(&((*g_tables[leftTableId])[leftColumn]), &((*rightTable)[rightColumn]));
+				}
 			}
 		}
-		g_leftIndexMutex.lock();
+
+		// last step: find inclusion dependencies in columns of the same table:
+		for (rightColumn = 0; rightColumn < rightTable->size(); rightColumn++)
+		{
+			for (leftColumn = rightColumn + 1; leftColumn < rightTable->size(); leftColumn++)
+			{
+				checkInclusionDependenciesInBothDirections(&((*rightTable)[leftColumn]), &((*rightTable)[rightColumn]));
+			}
+		}
 	}
-	g_leftIndexMutex.unlock();
 }
 
 int main(int argc, const char *argv[])
 {
 	time_t start_time = clock();
+	Dictionary globalDictionary;
+	unsigned int threadCount = std::thread::hardware_concurrency();
+	unsigned int tableId;
+	std::set<std::pair<std::streamoff, std::string>> fileNames;// file names sorted by file size
 
-	Dictionary *globalDictionary = new Dictionary;
-	std::vector<Table*> tables;
-	auto *columnSet = new std::set<std::pair<int, Column*>>();
+	std::cout << "Looking for inclusion dependencies using " << threadCount << " threads." << std::endl;
 
-	Table *t[104];
+	// Get file sizes:
+	for (tableId = 0; tableId < FILE_COUNT; tableId++)
+	{
+		std::stringstream fileName;
+		fileName << "D:/Daten/pdb/t" << std::setfill('0') << std::setw(3) << tableId << ".tsv";
+		std::ifstream fileStream(fileName.str(), std::ios::in | std::ios::binary);
+		fileStream.seekg(0, fileStream.end);
+		fileNames.insert(std::make_pair(fileStream.tellg(), fileName.str()));
+	}
 
-	std::cout << "Detected " << std::thread::hardware_concurrency() << " threads." << std::endl;
+	// Create worker threads:
+	std::vector<std::thread> threads;
+	for (unsigned int threadId = 0; threadId < threadCount-1; threadId++)
+		threads.push_back(std::thread(findInclusionDependencies));
 
 	// Read all files:
-	for (int i = 0; i <= 104; i++)
+	tableId = 0;
+	for (auto &fileName : fileNames)
 	{
 		time_t time_for_file = clock();
-		std::stringstream fileName;
-		fileName << "D:/Daten/pdb/t" << std::setfill('0') << std::setw(3) << i << ".tsv";
-		std::cout << "Read file " << fileName.str() << "...";
 
-		t[i] = new Table(globalDictionary, i);
-		t[i]->readFromFile(fileName.str());
-		std::cout << "done! " << t[i]->columnCount() << " columns and " << t[i]->rowCount() << " rows. Dictionary size: " << globalDictionary->size() << " Time needed: " << timeToString(clock()-time_for_file) << std::endl;
-		//int columnIndex = 0; //unused
+		std::cout << "Reading file " << fileName.second << "...";
 
-		// Sort column into set:
-		for (Table::iterator column = t[i]->begin(); column != t[i]->end(); column++)
-		{
-			columnSet->insert(std::make_pair(column->size(), &(*column)));
-		}
+		g_tables[tableId] = new Table(&globalDictionary, tableId);
+		g_tables[tableId]->readFromFile(fileName.second);
+		std::cout << "done! " << g_tables[tableId]->columnCount() << " columns and " << g_tables[tableId]->rowCount() << " rows. Dictionary size: " << globalDictionary.size() << " Time needed: " << timeToString(clock()-time_for_file) << std::endl;
+
+		g_tablesReadMutex.lock();
+		g_tablesRead++;
+		g_tablesReadMutex.unlock();
+
+		tableId++;
 	}
 
-	delete globalDictionary;
-
-	// Write columns back into vector:
-	std::vector<Column*> columns;
-	for (auto &c : *columnSet)
-	{
-		columns.push_back(c.second);
-	}
-	delete columnSet;
-
-	std::cout << "Finished reading after " << timeToString(clock() - start_time) << "   Total number of columns: " << columns.size() << std::endl;
-
-	//do computation
-	std::vector<std::thread> threads;
-	for (int threadId = 0; threadId < std::thread::hardware_concurrency(); threadId++)
-		threads.push_back(std::thread(findInclusionDependencies, columns));
-	for (int threadId = 0; threadId < std::thread::hardware_concurrency(); threadId++)
+	// Wait for worker threads:
+	for (unsigned int threadId = 0; threadId < threadCount-1; threadId++)
 		threads[threadId].join();
 
 	resultsFile.close();
 
-	std::cout << "Finished after " << timeToString(clock() - start_time) << "." << std::endl;
+	std::cout << "Done! Total time passed: " << timeToString(clock() - start_time) << "." << std::endl;
 
 	char c; std::cin >> c;
 

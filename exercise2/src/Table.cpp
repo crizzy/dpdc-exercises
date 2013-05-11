@@ -39,14 +39,14 @@ bool Table::readFromFile(std::string fileName)
 
 	std::string inputLine;
 	size_t left = 0, right = 0;
-	int rowIndex, columnIndex;
+	unsigned int rowIndex, columnIndex;
 
 	// First, determine the number of columns:
 	std::getline(dataFile, inputLine, '\n');
-	m_columnCount = std::count(inputLine.begin(), inputLine.end(), '\t') + 1;
+	m_columnCount = (unsigned int)(std::count(inputLine.begin(), inputLine.end(), '\t') + 1);
 
 	// Create column objects:
-	for (int columnIndex = 0; columnIndex < m_columnCount; columnIndex++)
+	for (columnIndex = 0; columnIndex < m_columnCount; columnIndex++)
 	{
 		push_back(Column(m_tableId, columnIndex));
 	}
@@ -84,7 +84,7 @@ void Table::appendValue(std::string value, int columnIndex)
 	if (dictionaryEntry == m_dictionary->end())
 	{
 		// value has not been found in this column
-		unsigned int dictionarySize = m_dictionary->size();
+		unsigned int dictionarySize = (unsigned int)m_dictionary->size();
 		(*m_dictionary)[value] = dictionarySize;
 		dictionaryMutex.unlock();
 		this->operator[](columnIndex).appendValue(value, dictionarySize);
