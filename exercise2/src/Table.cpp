@@ -77,7 +77,7 @@ bool Table::readFromFile(std::string fileName)
 
 std::mutex dictionaryMutex;
 
-void Table::appendValue(std::string &value, int columnIndex)
+void Table::appendValue(std::string value, int columnIndex)
 {
 	dictionaryMutex.lock();
 	Dictionary::iterator dictionaryEntry = m_dictionary->find(value);

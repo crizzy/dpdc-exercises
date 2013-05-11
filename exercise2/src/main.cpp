@@ -106,7 +106,7 @@ int main(int argc, const char *argv[])
 		t[i] = new Table(globalDictionary, i);
 		t[i]->readFromFile(fileName.str());
 		std::cout << "done! " << t[i]->columnCount() << " columns and " << t[i]->rowCount() << " rows. Dictionary size: " << globalDictionary->size() << " Time needed: " << timeToString(clock()-time_for_file) << std::endl;
-		int columnIndex = 0;
+		//int columnIndex = 0; //unused
 
 		// Sort column into set:
 		for (Table::iterator column = t[i]->begin(); column != t[i]->end(); column++)
