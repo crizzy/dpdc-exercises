@@ -7,10 +7,20 @@
 #include "Table.h"
 #include "Dictionary.h"
 
+
 #define FILE_COUNT 105
 #define MAX_TABLE_ID FILE_COUNT-1
 
-std::ofstream resultsFile("D:/Daten/pdb/inds.tsv");
+
+
+std::string PDB_FOLDER_PATH =
+    #ifdef _WIN32
+        "D:/Daten/pdb/";
+    #else
+        "/Users/Markus/Development/C++/dpdc-exercises/exercise2/data/pdb/";
+    #endif
+
+std::ofstream resultsFile(PDB_FOLDER_PATH + "inds.tsv");
 std::mutex resultsFileMutex;
 
 std::string timeToString(time_t readingTime)
@@ -142,7 +152,7 @@ int main(int argc, const char *argv[])
 	for (tableId = 0; tableId < FILE_COUNT; tableId++)
 	{
 		std::stringstream fileName;
-		fileName << "D:/Daten/pdb/t" << std::setfill('0') << std::setw(3) << tableId << ".tsv";
+		fileName << PDB_FOLDER_PATH + "t" << std::setfill('0') << std::setw(3) << tableId << ".tsv";
 		std::ifstream fileStream(fileName.str(), std::ios::in | std::ios::binary);
 		fileStream.seekg(0, fileStream.end);
 		fileNames.insert(std::make_pair(fileStream.tellg(), fileName.str()));
