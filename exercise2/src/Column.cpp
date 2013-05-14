@@ -13,9 +13,3 @@ Column::Column(int tableId, int columnId)
 Column::~Column(void)
 {
 }
-
-void Column::appendValue(std::string &value, unsigned int indexInGlobalDictionary)
-{
-	// Don't save the actual value, but only the index in the dictionary:
-	insert(indexInGlobalDictionary);
-}

@@ -10,8 +10,6 @@ public:
 	Column(int tableId, int columnId);
 	~Column(void);
 
-	void appendValue(std::string &value, unsigned int indexInGlobalDictionary);
-
 	inline int tableId() {return m_tableId;}
 	inline int columnId() {return m_columnId;}
 
