@@ -87,12 +87,12 @@ void Table::appendValue(std::string value, int columnIndex)
 		unsigned int dictionarySize = (unsigned int)m_dictionary->size();
 		(*m_dictionary)[value] = dictionarySize;
 		dictionaryMutex.unlock();
-		this->operator[](columnIndex).appendValue(dictionarySize);
+		this->operator[](columnIndex).insert(dictionarySize);
 	}
 	else
 	{
 		dictionaryMutex.unlock();
 		// value is already part of the column
-		this->operator[](columnIndex).appendValue(dictionaryEntry->second);
+		this->operator[](columnIndex).insert(dictionaryEntry->second);
 	}
 }

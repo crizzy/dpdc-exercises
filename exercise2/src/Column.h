@@ -10,9 +10,6 @@ public:
 	Column(int tableId, int columnId);
 	~Column(void);
 
-	void appendValue(unsigned int indexInGlobalDictionary);
-
-
 	inline int tableId() {return m_tableId;}
 	inline int columnId() {return m_columnId;}
 
