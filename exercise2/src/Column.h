@@ -14,7 +14,6 @@ public:
 	inline int columnId() {return m_columnId;}
 
 private:
-
 	int m_tableId;
 	int m_columnId;
 };
