@@ -67,6 +67,16 @@ void checkInclusionDependency(Column *dependent, Column *referenced)
 			return;//No IND	
 	}
 	
+    if (dependent->size() == referenced->size())
+    {
+        resultsFileMutex.lock();
+        resultsFile << "t" << std::setfill('0') << std::setw(3) << referenced->tableId()
+        << "[c" << std::setfill('0') << std::setw(3) << referenced->columnId()
+        << "]\tt" << std::setfill('0') << std::setw(3) << dependent->tableId()
+        << "[c" << std::setfill('0') << std::setw(3) << dependent->columnId() << "]" << std::endl;
+        resultsFileMutex.unlock();
+    }
+    
 	// Found IND!
 	resultsFileMutex.lock();
 	resultsFile << "t" << std::setfill('0') << std::setw(3) << dependent->tableId()
@@ -164,22 +174,22 @@ int main(int argc, const char *argv[])
 		threads.push_back(std::thread(findInclusionDependencies));
 
 	// Read all files:
-	tableId = 0;
+	int tableIndex = 0;
 	for (auto &fileName : fileNames)
 	{
 		time_t time_for_file = clock();
 
 		std::cout << "Reading file " << fileName.second << "...";
 
-		g_tables[tableId] = new Table(&globalDictionary, tableId);
-		g_tables[tableId]->readFromFile(fileName.second);
-		std::cout << "done! " << g_tables[tableId]->columnCount() << " columns and " << g_tables[tableId]->rowCount() << " rows. Dictionary size: " << globalDictionary.size() << " Time needed: " << timeToString(clock()-time_for_file) << std::endl;
+		g_tables[tableIndex] = new Table(&globalDictionary, tableIndex); //TODO tableId instead of tableIndex!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		g_tables[tableIndex]->readFromFile(fileName.second);
+		std::cout << "done! " << g_tables[tableIndex]->columnCount() << " columns and " << g_tables[tableIndex]->rowCount() << " rows. Dictionary size: " << globalDictionary.size() << " Time needed: " << timeToString(clock()-time_for_file) << std::endl;
 
 		g_tablesReadMutex.lock();
 		g_tablesRead++;
 		g_tablesReadMutex.unlock();
 
-		tableId++;
+		tableIndex++;
 	}
 
 	// Wait for worker threads:
