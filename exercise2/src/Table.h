@@ -11,7 +11,7 @@ public:
 	Table(Dictionary *dictionary, int tableId);
 	~Table(void);
 
-	bool readFromFile(std::string fileName);
+	bool readFromStream(std::istream *dataStream);
 
 	inline unsigned int columnCount() {return m_columnCount;}
 	inline unsigned int rowCount() {return m_rowCount;}

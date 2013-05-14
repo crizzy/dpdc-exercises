@@ -30,19 +30,14 @@ Table::~Table(void)
 }
 
 
-bool Table::readFromFile(std::string fileName)
+bool Table::readFromStream(std::istream *dataStream)
 {
-	std::ifstream dataFile(fileName);
-
-	if (!dataFile.is_open())
-		return false;
-
 	std::string inputLine;
 	size_t left = 0, right = 0;
 	unsigned int rowIndex, columnIndex;
 
 	// First, determine the number of columns:
-	std::getline(dataFile, inputLine, '\n');
+	std::getline(*dataStream, inputLine, '\n');
 	m_columnCount = (unsigned int)(std::count(inputLine.begin(), inputLine.end(), '\t') + 1);
 
 	// Create column objects:
@@ -52,14 +47,14 @@ bool Table::readFromFile(std::string fileName)
 	}
 
 	// Jump to the beginning of the file:
-	dataFile.seekg(0);
+	dataStream->seekg(0);
 
-	for (rowIndex = 0; !dataFile.eof(); rowIndex++)
+	for (rowIndex = 0; !dataStream->eof(); rowIndex++)
 	{
 		// Read next input line:
-		std::getline(dataFile, inputLine, '\n');
+		std::getline(*dataStream, inputLine, '\n');
 
-		if (dataFile.eof())
+		if (dataStream->eof())
 			break;
 
 		left = 0;
@@ -71,6 +66,7 @@ bool Table::readFromFile(std::string fileName)
 	}
 
 	m_rowCount = rowIndex;
+	delete dataStream;
 
 	return true;
 }
