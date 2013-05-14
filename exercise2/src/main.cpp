@@ -2,6 +2,7 @@
 #include <sstream>
 #include <fstream>
 #include <iomanip>
+#include <queue>
 #include <thread>
 #include <mutex>
 #include "Table.h"
@@ -10,8 +11,6 @@
 
 #define FILE_COUNT 105
 #define MAX_TABLE_ID FILE_COUNT-1
-
-
 
 std::string PDB_FOLDER_PATH =
     #ifdef _WIN32
@@ -93,46 +92,135 @@ void checkInclusionDependenciesInBothDirections(Column *first, Column *second)
 	return checkInclusionDependency(first, second);
 }
 
-unsigned int g_tablesChecked = 0;
-std::mutex g_tablesCheckedMutex;
-Table *g_tables[FILE_COUNT];
-unsigned int g_tablesRead = 0;
-std::mutex g_tablesReadMutex;
-
-void findInclusionDependencies()
+struct FileData
 {
+	std::stringstream *dataStream;
+	unsigned int tableId;
+	unsigned int tableIndex;
+	Table *table;
+};
+std::queue<FileData*> fileQueue;
+std::mutex fileQueueMutex;
 
+void readerWorker()
+{
+	std::set<std::tuple<std::streamoff, std::string, int>> fileNames;// file names sorted by file size
+
+	// Get file sizes:
+	for (int tableId = 0; tableId < FILE_COUNT; tableId++)
+	{
+		std::stringstream fileName;
+		fileName << PDB_FOLDER_PATH + "t" << std::setfill('0') << std::setw(3) << tableId << ".tsv";
+		std::ifstream fileStream(fileName.str(), std::ios::in | std::ios::binary);
+		fileStream.seekg(0, fileStream.end);
+		fileNames.insert(std::make_tuple(fileStream.tellg(), fileName.str(), tableId));
+	}
+
+	unsigned int tableIndex = 0;
+	for (auto &fileName : fileNames)
+	{
+		// Read file stream:
+		FileData *fileData = new FileData;
+		std::ifstream file(std::get<1>(fileName));
+		fileData->dataStream = new std::stringstream;
+		(*fileData->dataStream) << file.rdbuf();
+		fileData->tableId = std::get<2>(fileName);
+		fileData->tableIndex = tableIndex++;
+
+		// Make file stream available to the next pipeline worker:
+		fileQueueMutex.lock();
+		fileQueue.push(fileData);
+		fileQueueMutex.unlock();
+	}
+
+	//Signal completion by pushing a null object:
+	fileQueueMutex.lock();
+	fileQueue.push(0);
+	fileQueueMutex.unlock();
+}
+
+std::queue<FileData*> tableQueue;
+std::mutex tableQueueMutex;
+Table *g_tables[FILE_COUNT];
+
+void preprocessingWorker()
+{
+	Dictionary globalDictionary;
+	FileData *currentFileData;
+
+	while (true)
+	{
+		// Fetch next file stream:
+		fileQueueMutex.lock();
+		while (fileQueue.empty())
+		{
+			fileQueueMutex.unlock();
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			fileQueueMutex.lock();
+		}
+		currentFileData = fileQueue.front();
+		if (currentFileData == 0)// Finished?
+		{
+			fileQueueMutex.unlock();
+			break;
+		}
+		fileQueue.pop();
+		fileQueueMutex.unlock();
+
+		// Preprocess file stream:
+		currentFileData->table = new Table(&globalDictionary, currentFileData->tableId);
+		currentFileData->table->readFromStream(currentFileData->dataStream);
+		g_tables[currentFileData->tableIndex] = currentFileData->table;
+
+		// Make preprocessed data available for next pipeline worker:
+		tableQueueMutex.lock();
+		tableQueue.push(currentFileData);
+		tableQueueMutex.unlock();
+	}
+
+	//Signal completion by pushing a null object:
+	tableQueueMutex.lock();
+	tableQueue.push(0);
+	tableQueueMutex.unlock();
+}
+
+void computationWorker()
+{
+	FileData *currentFileData;
 	Table *rightTable;
-	unsigned int leftTableId, rightTableId;
+	unsigned int leftTableIndex, rightTableIndex;
 	int rightColumn, leftColumn;
 
 	while (true)
 	{
-		g_tablesCheckedMutex.lock();
-		rightTableId = g_tablesChecked++;
-		g_tablesCheckedMutex.unlock();
-
-		if (rightTableId > MAX_TABLE_ID)
-			return;
-
-		g_tablesReadMutex.lock();
-		while (rightTableId >= g_tablesRead)
+		// Fetch next table:
+		tableQueueMutex.lock();
+		while (tableQueue.empty())
 		{
-			g_tablesReadMutex.unlock();
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			g_tablesReadMutex.lock();
+			tableQueueMutex.unlock();
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			tableQueueMutex.lock();
 		}
-		g_tablesReadMutex.unlock();
+		currentFileData = tableQueue.front();
+		if (currentFileData == 0)// Finished?
+		{
+			tableQueueMutex.unlock();
+			break;
+		}
+		tableQueue.pop();
+		tableQueueMutex.unlock();
 
-		rightTable = g_tables[rightTableId];
+		// First step: search all column combinations (this table with other tables)
+		rightTableIndex = currentFileData->tableIndex;
+		rightTable = currentFileData->table;
 
-		for (leftTableId = 0; leftTableId < rightTableId; leftTableId++)
+		for (leftTableIndex = 0; leftTableIndex < rightTableIndex; leftTableIndex++)
 		{
 			for (rightColumn = 0; rightColumn < rightTable->size(); rightColumn++)
 			{
-				for (leftColumn = 0; leftColumn < g_tables[leftTableId]->size(); leftColumn++)
+				for (leftColumn = 0; leftColumn < g_tables[leftTableIndex]->size(); leftColumn++)
 				{
-					checkInclusionDependenciesInBothDirections(&((*g_tables[leftTableId])[leftColumn]), &((*rightTable)[rightColumn]));
+					checkInclusionDependenciesInBothDirections(&((*g_tables[leftTableIndex])[leftColumn]), &((*rightTable)[rightColumn]));
 				}
 			}
 		}
@@ -151,50 +239,23 @@ void findInclusionDependencies()
 int main(int argc, const char *argv[])
 {
 	time_t start_time = clock();
-	Dictionary globalDictionary;
+
 	unsigned int threadCount = std::thread::hardware_concurrency();
-	unsigned int tableId;
-	std::set<std::tuple<std::streamoff, std::string, int>> fileNames;// file names sorted by file size
 
 	std::cout << "Looking for inclusion dependencies using " << threadCount << " threads." << std::endl;
 
-	// Get file sizes:
-	for (tableId = 0; tableId < FILE_COUNT; tableId++)
-	{
-		std::stringstream fileName;
-		fileName << PDB_FOLDER_PATH + "t" << std::setfill('0') << std::setw(3) << tableId << ".tsv";
-		std::ifstream fileStream(fileName.str(), std::ios::in | std::ios::binary);
-		fileStream.seekg(0, fileStream.end);
-		fileNames.insert(std::make_tuple(fileStream.tellg(), fileName.str(), tableId));
-	}
-
 	// Create worker threads:
-	std::vector<std::thread> threads;
-	for (unsigned int threadId = 0; threadId < threadCount-1; threadId++)
-		threads.push_back(std::thread(findInclusionDependencies));
-
-	// Read all files:
-	int tableIndex = 0;
-	for (auto &fileName : fileNames)
-	{
-		time_t time_for_file = clock();
-
-		std::cout << "Reading file " << std::get<1>(fileName) << "...";
-
-		g_tables[tableIndex] = new Table(&globalDictionary, std::get<2>(fileName)); //TODO tableId instead of tableIndex!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-		g_tables[tableIndex]->readFromFile(std::get<1>(fileName));
-		std::cout << "done! " << g_tables[tableIndex]->columnCount() << " columns and " << g_tables[tableIndex]->rowCount() << " rows. Dictionary size: " << globalDictionary.size() << " Time needed: " << timeToString(clock()-time_for_file) << std::endl;
-
-		g_tablesReadMutex.lock();
-		g_tablesRead++;
-		g_tablesReadMutex.unlock();
-
-		tableIndex++;
-	}
+	std::thread readerThread(readerWorker);
+	std::vector<std::thread> computationWorkers;
+	for (unsigned int threadId = 0; threadId < threadCount-2; threadId++)
+		computationWorkers.push_back(std::thread(computationWorker));
+	std::thread preprocessingThread(preprocessingWorker);
 
 	// Wait for worker threads:
-	for (unsigned int threadId = 0; threadId < threadCount-1; threadId++)
-		threads[threadId].join();
+	readerThread.join();
+	preprocessingThread.join();
+	for (unsigned int threadId = 0; threadId < threadCount-2; threadId++)
+		computationWorkers[threadId].join();
 
 	resultsFile.close();
 
