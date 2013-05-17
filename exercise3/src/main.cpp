@@ -34,7 +34,9 @@ std::string timeToString(time_t readingTime)
 	return ss.str();
 }
 
-void checkFunctionalDependency(Column *dependent, Column *referenced)
+typedef std::unordered_map<int, int> MappingsList;
+
+void checkFunctionalDependency(Column *dependent, Column *referenced, MappingsList &mappingsList)
 {
 //    std::cout << dependent->columnId() << ": ";
 //    for(int i : *dependent)
@@ -48,8 +50,20 @@ void checkFunctionalDependency(Column *dependent, Column *referenced)
     
     
     // this mappingsList exist just for the comparison of those 2 columns
-    typedef std::unordered_map<int, int> MappingsList;
-    auto mappingsList = std::unordered_map<int, int>();
+    
+    if (!mappingsList.empty())
+    {
+        //this means we already compared the other way B->A, if we are now doing A->B
+
+        std::set<int> values;
+        for(std::pair<int,int> mapping : mappingsList)
+            if (values.insert(mapping.second).second ==false) // false, if element already existed in set
+            {
+                std::cout << "finish B->A early" << std::endl;
+                return;
+            }
+    }
+    mappingsList.clear();
     
 	Column::iterator dep = dependent->begin();
 	Column::iterator ref = referenced->begin();
@@ -57,15 +71,15 @@ void checkFunctionalDependency(Column *dependent, Column *referenced)
 	while (dep != dependent->end())
 	{
 
-		MappingsList::iterator mappingsEntry = mappingsList.find(*dep);
-        if (mappingsEntry == mappingsList.end())
+		MappingsList::iterator mappingsEntryDep = mappingsList.find(*dep);
+        if (mappingsEntryDep == mappingsList.end())
         {
             // value has not been found in this column
             mappingsList[*dep] = *ref;
         }
         else
         {
-            if (mappingsEntry->second != *ref)
+            if (mappingsEntryDep->second != *ref)
                 return;
         }
         dep++;
@@ -81,8 +95,12 @@ void checkFunctionalDependency(Column *dependent, Column *referenced)
 
 void checkInclusionDependenciesInBothDirections(Column *first, Column *second)
 {
-    checkFunctionalDependency(second, first);
-	checkFunctionalDependency(first, second);
+    auto mappingsList = std::unordered_map<int, int>();
+    
+	checkFunctionalDependency(first, second, mappingsList);
+    
+    checkFunctionalDependency(second, first, mappingsList);
+    mappingsList.clear();
 }
 
 struct FileData
