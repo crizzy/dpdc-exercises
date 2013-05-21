@@ -22,7 +22,7 @@ std::string inputFileName = DATA_FOLDER_PATH + fileNameWithoutEnding + "-input.t
 std::ofstream resultsFile(DATA_FOLDER_PATH + fileNameWithoutEnding + ".tsv");
 std::mutex resultsFileMutex;
 
-std::string timeToString(time_t readingTime)
+const std::string timeToString(const time_t readingTime)
 {
     time_t ms = 1000 * readingTime / CLOCKS_PER_SEC;
     

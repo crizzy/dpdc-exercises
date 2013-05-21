@@ -7,7 +7,7 @@
 #include <mutex>
 #include "Dictionary.h"
 
-Table::Table(Dictionary *dictionary, int tableId)
+Table::Table(Dictionary *dictionary, const int tableId)
 {
 	m_rowCount = -1;
 	m_tableId = tableId;
@@ -75,7 +75,7 @@ bool Table::readFromStream(std::istream *dataStream)
 
 std::mutex dictionaryMutex;
 
-void Table::appendValue(std::string value, int columnIndex)
+void Table::appendValue(const std::string value, const int columnIndex)
 {
 	dictionaryMutex.lock();
 	Dictionary::iterator dictionaryEntry = m_dictionary->find(value);
