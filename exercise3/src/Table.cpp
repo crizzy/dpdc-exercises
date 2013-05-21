@@ -13,11 +13,9 @@ Table::Table(Dictionary *dictionary)
 	m_dictionary = dictionary;
 }
 
-
 Table::~Table(void)
 {
 }
-
 
 bool Table::readFromStream(std::istream *dataStream)
 {
@@ -61,23 +59,18 @@ bool Table::readFromStream(std::istream *dataStream)
 	return true;
 }
 
-std::mutex dictionaryMutex;
-
 void Table::appendValue(std::string value, int columnIndex)
 {
-	//dictionaryMutex.lock();
 	Dictionary::iterator dictionaryEntry = m_dictionary->find(value);
 	if (dictionaryEntry == m_dictionary->end())
 	{
 		// value has not been found in this column
 		unsigned int dictionarySize = (unsigned int)m_dictionary->size();
 		(*m_dictionary)[value] = dictionarySize;
-		//dictionaryMutex.unlock();
 		this->operator[](columnIndex)->push_back(dictionarySize);
 	}
 	else
 	{
-		//dictionaryMutex.unlock();
 		// value is already part of the column
 		this->operator[](columnIndex)->push_back(dictionaryEntry->second);
 	}

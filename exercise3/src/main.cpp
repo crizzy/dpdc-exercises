@@ -144,13 +144,6 @@ int main(int argc, const char *argv[])
 	unsigned int threadCount = std::thread::hardware_concurrency();
 	std::cout << "Looking for functional dependencies using " << threadCount << " threads." << std::endl;
 
-	// Create worker threads:
-//	std::thread readerThread(readerWorker);
-//	std::vector<std::thread> computationWorkers;
-//	for (unsigned int threadId = 0; threadId < threadCount-2; threadId++)
-//		computationWorkers.push_back(std::thread(computationWorker));
-//	std::thread preprocessingThread(preprocessingWorker);
-
     readerWorker();
     std::cout << "Reading done in: " << timeToString(clock() - start_time) << "." << std::endl;
 	std::vector<std::thread> computationThreads;
@@ -158,12 +151,6 @@ int main(int argc, const char *argv[])
 		computationThreads.push_back(std::thread(computationWorker));
    	for (unsigned int i = 0; i < std::thread::hardware_concurrency(); i++)
 		computationThreads[i].join();
-    
-	// Wait for worker threads:
-//	readerThread.join();
-//	preprocessingThread.join();
-//	for (unsigned int threadId = 0; threadId < threadCount-2; threadId++)
-//		computationWorkers[threadId].join();
 
 	resultsFile.close();
 
