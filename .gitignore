@@ -39,3 +39,7 @@ data/*uniques.tsv
 
 #exercise2
 exercise2/data/pdb/*
+exercise2/src_parallelRead/*
+
+#exercise3
+exercise3/data/fd*
