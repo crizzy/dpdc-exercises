@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iomanip>
 #include <queue>
+#include <set>
 #include <thread>
 #include <mutex>
 #include "Table.h"
@@ -10,7 +11,7 @@
 
 std::string DATA_FOLDER_PATH =
     #ifdef _WIN32
-        "???";
+        "D:/Daten/dbtesma/";
     #else
         "/Users/Markus/Development/C++/dpdc-exercises/exercise3/data/";
     #endif
@@ -34,7 +35,9 @@ const std::string timeToString(const time_t readingTime)
 	return ss.str();
 }
 
-void checkFunctionalDependency(Column *dependent, Column *referenced)
+typedef std::unordered_map<int, int> MappingsList;
+
+void checkFunctionalDependency(Column *dependent, Column *referenced, MappingsList &mappingsList)
 {
 //    std::cout << dependent->columnId() << ": ";
 //    for(int i : *dependent)
@@ -48,8 +51,22 @@ void checkFunctionalDependency(Column *dependent, Column *referenced)
     
     
     // this mappingsList exist just for the comparison of those 2 columns
-    typedef std::unordered_map<int, int> MappingsList;
-    auto mappingsList = std::unordered_map<int, int>();
+
+	// disabled to due 5 seconds overhead; maybe try using a hashmap instead of a set here?
+    /*if (!mappingsList.empty())
+    {
+        //this means we already compared the other way B->A, if we are now doing A->B
+
+        std::set<int> values;
+        for(std::pair<int,int> mapping : mappingsList)
+            if (values.insert(mapping.second).second ==false) // false, if element already existed in set
+            {
+                //std::cout << "finish B->A early" << std::endl;
+                return;
+            }
+    }
+    mappingsList.clear();*/
+
     
 	Column::iterator dep = dependent->begin();
 	Column::iterator ref = referenced->begin();
@@ -81,83 +98,46 @@ void checkFunctionalDependency(Column *dependent, Column *referenced)
 
 void checkInclusionDependenciesInBothDirections(Column *first, Column *second)
 {
-    checkFunctionalDependency(second, first);
-	checkFunctionalDependency(first, second);
+
+    auto mappingsList = std::unordered_map<int, int>();
+    
+	checkFunctionalDependency(first, second, mappingsList);
+	mappingsList.clear();
+    checkFunctionalDependency(second, first, mappingsList);
+    //mappingsList.clear();
+
 }
 
-struct FileData
-{
-	std::ifstream *dataStream;
-	unsigned int tableId;
-	unsigned int tableIndex;
-	Table *table;
-};
-//std::queue<FileData*> fileQueue;
-//std::mutex fileQueueMutex;
-
-std::ifstream inputFile;
+Table *table;
 
 void readerWorker()
 {
-    // Get file sizes:
-    std::ifstream fileStream(inputFileName, std::ios::in | std::ios::binary);
-    
-    fileStream.seekg(0, fileStream.end); // set iterator to the end
-    size_t fileLength = fileStream.tellg();
-    std::cout << "The file length: " << fileLength << std::endl;
-    
-    
-   	//unsigned int tableIndex = 0;
-
-    // Read file stream:
-    //FileData *fileData = new FileData;
-    inputFile = std::ifstream(inputFileName);
-    
-//    fileData->dataStream = new std::stringstream;
-//    (*fileData->dataStream) << file.rdbuf();
-//    fileData->tableId = std::get<2>(fileName);
-//    fileData->tableIndex = tableIndex++;
-}
-
-//std::queue<FileData*> tableQueue;
-//std::mutex tableQueueMutex;
-//Table *g_tables[FILE_COUNT];
-
-FileData currentFileData;
-Table *table;
-
-void preprocessingWorker()
-{
 	Dictionary globalDictionary;
-	
-    int tableId = -1;
-    table = new Table(&globalDictionary, tableId);
-    currentFileData.dataStream = &inputFile;
-    currentFileData.tableId = tableId;
-    currentFileData.table = table;
-    
-    
-    currentFileData.table->readFromStream(currentFileData.dataStream);
+	std::ifstream fileStream(inputFileName, std::ios::in | std::ios::binary);
+    table = new Table(&globalDictionary);
+	table->readFromStream(&fileStream);
 }
+
+int g_rightColumn = 0;
+std::mutex g_rightColumnMutex;
 
 void computationWorker()
 {
-	//FileData *currentFileData;
-	Table *rightTable;
-    rightTable = table;
-	//unsigned int leftTableIndex, rightTableIndex;
 	int rightColumn, leftColumn;
 
     // last step: find inclusion dependencies in columns of the same table:
-    for (rightColumn = 0; rightColumn < rightTable->size(); rightColumn++)
+	g_rightColumnMutex.lock();
+    for (rightColumn = g_rightColumn++; rightColumn < table->size(); rightColumn = g_rightColumn++)
     {
-        std::cout << "rightColumn: " << rightColumn << std::endl;
-        for (leftColumn = rightColumn + 1; leftColumn < rightTable->size(); leftColumn++)
+		g_rightColumnMutex.unlock();
+        //std::cout << "rightColumn: " << rightColumn << std::endl;
+        for (leftColumn = rightColumn + 1; leftColumn < table->size(); leftColumn++)
         {
-            checkInclusionDependenciesInBothDirections(((*rightTable)[leftColumn]), ((*rightTable)[rightColumn]));
+            checkInclusionDependenciesInBothDirections(((*table)[leftColumn]), ((*table)[rightColumn]));
         }
-        
+        g_rightColumnMutex.lock();
     }
+	g_rightColumnMutex.unlock();
 }
 
 int main(int argc, const char *argv[])
@@ -167,24 +147,13 @@ int main(int argc, const char *argv[])
 	unsigned int threadCount = std::thread::hardware_concurrency();
 	std::cout << "Looking for functional dependencies using " << threadCount << " threads." << std::endl;
 
-	// Create worker threads:
-//	std::thread readerThread(readerWorker);
-//	std::vector<std::thread> computationWorkers;
-//	for (unsigned int threadId = 0; threadId < threadCount-2; threadId++)
-//		computationWorkers.push_back(std::thread(computationWorker));
-//	std::thread preprocessingThread(preprocessingWorker);
-
     readerWorker();
-    preprocessingWorker();
     std::cout << "Reading done in: " << timeToString(clock() - start_time) << "." << std::endl;
-    computationWorker();
-    
-    
-	// Wait for worker threads:
-//	readerThread.join();
-//	preprocessingThread.join();
-//	for (unsigned int threadId = 0; threadId < threadCount-2; threadId++)
-//		computationWorkers[threadId].join();
+	std::vector<std::thread> computationThreads;
+	for (unsigned int i = 0; i < std::thread::hardware_concurrency(); i++)
+		computationThreads.push_back(std::thread(computationWorker));
+   	for (unsigned int i = 0; i < std::thread::hardware_concurrency(); i++)
+		computationThreads[i].join();
 
 	resultsFile.close();
 
