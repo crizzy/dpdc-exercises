@@ -37,7 +37,9 @@ const std::string timeToString(const time_t readingTime)
 
 typedef std::unordered_map<int, int> MappingsList;
 
-void checkFunctionalDependency(Column *dependent, Column *referenced, MappingsList &mappingsList)
+MappingsList::iterator mapIt;
+
+void checkFunctionalDependency(Column *dependent, Column *referenced, MappingsList *mappingsList)
 {
 //    std::cout << dependent->columnId() << ": ";
 //    for(int i : *dependent)
@@ -52,20 +54,39 @@ void checkFunctionalDependency(Column *dependent, Column *referenced, MappingsLi
     
     // this mappingsList exist just for the comparison of those 2 columns
 
+     std::unordered_map<int,int> values; // TODO use hashmap
+    
 	// disabled to due 5 seconds overhead; maybe try using a hashmap instead of a set here?
-    /*if (!mappingsList.empty())
+    if (!mappingsList->empty())
     {
         //this means we already compared the other way B->A, if we are now doing A->B
 
-        std::set<int> values;
-        for(std::pair<int,int> mapping : mappingsList)
-            if (values.insert(mapping.second).second ==false) // false, if element already existed in set
+   
+        
+        
+        
+        
+        for(std::pair<int,int> mapping : *mappingsList)
+        {
+            mapIt = values.find(mapping.second);
+            
+            if (mapIt == values.end()) // false, if element already existed in set
             {
+                // doesnt exist
+                
+                values[mapIt->second] = mapIt->first;
                 //std::cout << "finish B->A early" << std::endl;
-                return;
+                
             }
+            else
+                return;
+            
+        }
+        mappingsList = &values;
     }
-    mappingsList.clear();*/
+    
+    
+    
 
     
 	Column::iterator dep = dependent->begin();
@@ -74,11 +95,11 @@ void checkFunctionalDependency(Column *dependent, Column *referenced, MappingsLi
 	while (dep != dependent->end())
 	{
 
-		MappingsList::iterator mappingsEntry = mappingsList.find(*dep);
-        if (mappingsEntry == mappingsList.end())
+		MappingsList::iterator mappingsEntry = mappingsList->find(*dep);
+        if (mappingsEntry == mappingsList->end())
         {
             // value has not been found in this column
-            mappingsList[*dep] = *ref;
+            (*mappingsList)[*dep] = *ref;
         }
         else
         {
@@ -101,9 +122,9 @@ void checkInclusionDependenciesInBothDirections(Column *first, Column *second)
 
     auto mappingsList = std::unordered_map<int, int>();
     
-	checkFunctionalDependency(first, second, mappingsList);
+	checkFunctionalDependency(first, second, &mappingsList);
 	mappingsList.clear();
-    checkFunctionalDependency(second, first, mappingsList);
+    checkFunctionalDependency(second, first, &mappingsList);
     //mappingsList.clear();
 
 }
