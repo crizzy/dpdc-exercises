@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iomanip>
 #include <queue>
+#include <set>
 #include <thread>
 #include <mutex>
 #include "Table.h"
@@ -10,7 +11,7 @@
 
 std::string DATA_FOLDER_PATH =
     #ifdef _WIN32
-        "???";
+        "D:/Daten/dbtesma/";
     #else
         "/Users/Markus/Development/C++/dpdc-exercises/exercise3/data/";
     #endif
@@ -51,7 +52,8 @@ void checkFunctionalDependency(Column *dependent, Column *referenced, MappingsLi
     
     // this mappingsList exist just for the comparison of those 2 columns
     
-    if (!mappingsList.empty())
+	// disabled to due 5 seconds overhead; maybe try using a hashmap instead of a set here?
+    /*if (!mappingsList.empty())
     {
         //this means we already compared the other way B->A, if we are now doing A->B
 
@@ -59,11 +61,11 @@ void checkFunctionalDependency(Column *dependent, Column *referenced, MappingsLi
         for(std::pair<int,int> mapping : mappingsList)
             if (values.insert(mapping.second).second ==false) // false, if element already existed in set
             {
-                std::cout << "finish B->A early" << std::endl;
+                //std::cout << "finish B->A early" << std::endl;
                 return;
             }
     }
-    mappingsList.clear();
+    mappingsList.clear();*/
     
 	Column::iterator dep = dependent->begin();
 	Column::iterator ref = referenced->begin();
@@ -98,84 +100,41 @@ void checkInclusionDependenciesInBothDirections(Column *first, Column *second)
     auto mappingsList = std::unordered_map<int, int>();
     
 	checkFunctionalDependency(first, second, mappingsList);
-    
+	mappingsList.clear();
     checkFunctionalDependency(second, first, mappingsList);
-    mappingsList.clear();
+    //mappingsList.clear();
 }
 
-struct FileData
-{
-	std::ifstream *dataStream;
-	unsigned int tableId;
-	unsigned int tableIndex;
-	Table *table;
-};
-//std::queue<FileData*> fileQueue;
-//std::mutex fileQueueMutex;
-
-std::ifstream inputFile;
+Table *table;
 
 void readerWorker()
 {
-    // Get file sizes:
-    std::ifstream fileStream(inputFileName, std::ios::in | std::ios::binary);
-    
-    fileStream.seekg(0, fileStream.end); // set iterator to the end
-    size_t fileLength = fileStream.tellg();
-    std::cout << "The file length: " << fileLength << std::endl;
-    
-    
-   	//unsigned int tableIndex = 0;
-
-    // Read file stream:
-    //FileData *fileData = new FileData;
-    inputFile = std::ifstream(inputFileName);
-    
-//    fileData->dataStream = new std::stringstream;
-//    (*fileData->dataStream) << file.rdbuf();
-//    fileData->tableId = std::get<2>(fileName);
-//    fileData->tableIndex = tableIndex++;
-}
-
-//std::queue<FileData*> tableQueue;
-//std::mutex tableQueueMutex;
-//Table *g_tables[FILE_COUNT];
-
-FileData currentFileData;
-Table *table;
-
-void preprocessingWorker()
-{
 	Dictionary globalDictionary;
-	
-    int tableId = -1;
-    table = new Table(&globalDictionary, tableId);
-    currentFileData.dataStream = &inputFile;
-    currentFileData.tableId = tableId;
-    currentFileData.table = table;
-    
-    
-    currentFileData.table->readFromStream(currentFileData.dataStream);
+	std::ifstream fileStream(inputFileName, std::ios::in | std::ios::binary);
+    table = new Table(&globalDictionary);
+	table->readFromStream(&fileStream);
 }
+
+int g_rightColumn = 0;
+std::mutex g_rightColumnMutex;
 
 void computationWorker()
 {
-	//FileData *currentFileData;
-	Table *rightTable;
-    rightTable = table;
-	//unsigned int leftTableIndex, rightTableIndex;
 	int rightColumn, leftColumn;
 
     // last step: find inclusion dependencies in columns of the same table:
-    for (rightColumn = 0; rightColumn < rightTable->size(); rightColumn++)
+	g_rightColumnMutex.lock();
+    for (rightColumn = g_rightColumn++; rightColumn < table->size(); rightColumn = g_rightColumn++)
     {
-        std::cout << "rightColumn: " << rightColumn << std::endl;
-        for (leftColumn = rightColumn + 1; leftColumn < rightTable->size(); leftColumn++)
+		g_rightColumnMutex.unlock();
+        //std::cout << "rightColumn: " << rightColumn << std::endl;
+        for (leftColumn = rightColumn + 1; leftColumn < table->size(); leftColumn++)
         {
-            checkInclusionDependenciesInBothDirections(((*rightTable)[leftColumn]), ((*rightTable)[rightColumn]));
+            checkInclusionDependenciesInBothDirections(((*table)[leftColumn]), ((*table)[rightColumn]));
         }
-        
+        g_rightColumnMutex.lock();
     }
+	g_rightColumnMutex.unlock();
 }
 
 int main(int argc, const char *argv[])
@@ -193,10 +152,12 @@ int main(int argc, const char *argv[])
 //	std::thread preprocessingThread(preprocessingWorker);
 
     readerWorker();
-    preprocessingWorker();
     std::cout << "Reading done in: " << timeToString(clock() - start_time) << "." << std::endl;
-    computationWorker();
-    
+	std::vector<std::thread> computationThreads;
+	for (unsigned int i = 0; i < std::thread::hardware_concurrency(); i++)
+		computationThreads.push_back(std::thread(computationWorker));
+   	for (unsigned int i = 0; i < std::thread::hardware_concurrency(); i++)
+		computationThreads[i].join();
     
 	// Wait for worker threads:
 //	readerThread.join();

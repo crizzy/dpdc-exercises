@@ -7,21 +7,10 @@
 #include <mutex>
 #include "Dictionary.h"
 
-Table::Table(Dictionary *dictionary, int tableId)
+Table::Table(Dictionary *dictionary)
 {
 	m_rowCount = -1;
-	m_tableId = tableId;
-
-	if (dictionary == 0)
-	{
-		//Create a local dictionary for this table
-		m_dictionary = new Dictionary();
-	}
-	else
-	{
-		//Use the dictionary given by the parent
-		m_dictionary = dictionary;
-	}
+	m_dictionary = dictionary;
 }
 
 
@@ -43,7 +32,7 @@ bool Table::readFromStream(std::istream *dataStream)
 	// Create column objects:
 	for (columnIndex = 0; columnIndex < m_columnCount; columnIndex++)
 	{
-		push_back(new Column(m_tableId, columnIndex));
+		push_back(new Column(columnIndex));
 	}
 
 	// Jump to the beginning of the file:
@@ -51,8 +40,8 @@ bool Table::readFromStream(std::istream *dataStream)
 
 	for (rowIndex = 0; !dataStream->eof(); rowIndex++)
 	{
-        if (rowIndex % 1000 == 0)
-            std::cout << "Reading row: " << rowIndex << std::endl;
+        //if (rowIndex % 1000 == 0)
+        //    std::cout << "Reading row: " << rowIndex << std::endl;
 		// Read next input line:
 		std::getline(*dataStream, inputLine, '\n');
 
@@ -68,7 +57,6 @@ bool Table::readFromStream(std::istream *dataStream)
 	}
 
 	m_rowCount = rowIndex;
-	//delete dataStream;
 
 	return true;
 }
@@ -77,19 +65,19 @@ std::mutex dictionaryMutex;
 
 void Table::appendValue(std::string value, int columnIndex)
 {
-	dictionaryMutex.lock();
+	//dictionaryMutex.lock();
 	Dictionary::iterator dictionaryEntry = m_dictionary->find(value);
 	if (dictionaryEntry == m_dictionary->end())
 	{
 		// value has not been found in this column
 		unsigned int dictionarySize = (unsigned int)m_dictionary->size();
 		(*m_dictionary)[value] = dictionarySize;
-		dictionaryMutex.unlock();
+		//dictionaryMutex.unlock();
 		this->operator[](columnIndex)->push_back(dictionarySize);
 	}
 	else
 	{
-		dictionaryMutex.unlock();
+		//dictionaryMutex.unlock();
 		// value is already part of the column
 		this->operator[](columnIndex)->push_back(dictionaryEntry->second);
 	}

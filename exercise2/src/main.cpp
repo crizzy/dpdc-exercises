@@ -8,7 +8,6 @@
 #include "Table.h"
 #include "Dictionary.h"
 
-
 #define FILE_COUNT 105
 #define MAX_TABLE_ID FILE_COUNT-1
 
@@ -101,88 +100,10 @@ struct FileData
 };
 std::queue<FileData*> fileQueue;
 std::mutex fileQueueMutex;
-
-void readerWorker()
-{
-	std::set<std::tuple<std::streamoff, std::string, int>> fileNames;// file names sorted by file size
-
-	// Get file sizes:
-	for (int tableId = 0; tableId < FILE_COUNT; tableId++)
-	{
-		std::stringstream fileName;
-		fileName << PDB_FOLDER_PATH + "t" << std::setfill('0') << std::setw(3) << tableId << ".tsv";
-		std::ifstream fileStream(fileName.str(), std::ios::in | std::ios::binary);
-		fileStream.seekg(0, fileStream.end);
-		fileNames.insert(std::make_tuple(fileStream.tellg(), fileName.str(), tableId));
-	}
-
-	unsigned int tableIndex = 0;
-	for (auto &fileName : fileNames)
-	{
-		// Read file stream:
-		FileData *fileData = new FileData;
-		std::ifstream file(std::get<1>(fileName));
-		fileData->dataStream = new std::stringstream;
-		(*fileData->dataStream) << file.rdbuf();
-		fileData->tableId = std::get<2>(fileName);
-		fileData->tableIndex = tableIndex++;
-
-		// Make file stream available to the next pipeline worker:
-		fileQueueMutex.lock();
-		fileQueue.push(fileData);
-		fileQueueMutex.unlock();
-	}
-
-	//Signal completion by pushing a null object:
-	fileQueueMutex.lock();
-	fileQueue.push(0);
-	fileQueueMutex.unlock();
-}
-
 std::queue<FileData*> tableQueue;
 std::mutex tableQueueMutex;
 Table *g_tables[FILE_COUNT];
-
-void preprocessingWorker()
-{
-	Dictionary globalDictionary;
-	FileData *currentFileData;
-
-	while (true)
-	{
-		// Fetch next file stream:
-		fileQueueMutex.lock();
-		while (fileQueue.empty())
-		{
-			fileQueueMutex.unlock();
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
-			fileQueueMutex.lock();
-		}
-		currentFileData = fileQueue.front();
-		if (currentFileData == 0)// Finished?
-		{
-			fileQueueMutex.unlock();
-			break;
-		}
-		fileQueue.pop();
-		fileQueueMutex.unlock();
-
-		// Preprocess file stream:
-		currentFileData->table = new Table(&globalDictionary, currentFileData->tableId);
-		currentFileData->table->readFromStream(currentFileData->dataStream);
-		g_tables[currentFileData->tableIndex] = currentFileData->table;
-
-		// Make preprocessed data available for next pipeline worker:
-		tableQueueMutex.lock();
-		tableQueue.push(currentFileData);
-		tableQueueMutex.unlock();
-	}
-
-	//Signal completion by pushing a null object:
-	tableQueueMutex.lock();
-	tableQueue.push(0);
-	tableQueueMutex.unlock();
-}
+Dictionary globalDictionary;
 
 void computationWorker()
 {
@@ -234,6 +155,83 @@ void computationWorker()
 			}
 		}
 	}
+}
+
+void readerWorker()
+{
+	std::set<std::tuple<std::streamoff, std::string, int>> fileNames;// file names sorted by file size
+
+	// Get file sizes:
+	for (int tableId = 0; tableId < FILE_COUNT; tableId++)
+	{
+		std::stringstream fileName;
+		fileName << PDB_FOLDER_PATH + "t" << std::setfill('0') << std::setw(3) << tableId << ".tsv";
+		std::ifstream fileStream(fileName.str(), std::ios::in | std::ios::binary);
+		fileStream.seekg(0, fileStream.end);
+		fileNames.insert(std::make_tuple(fileStream.tellg(), fileName.str(), tableId));
+	}
+
+	unsigned int tableIndex = 0;
+	for (auto &fileName : fileNames)
+	{
+		// Read file stream:
+		FileData *fileData = new FileData;
+		std::ifstream file(std::get<1>(fileName));
+		fileData->dataStream = new std::stringstream;
+		(*fileData->dataStream) << file.rdbuf();
+		fileData->tableId = std::get<2>(fileName);
+		fileData->tableIndex = tableIndex++;
+
+		// Make file stream available to the next pipeline worker:
+		fileQueueMutex.lock();
+		fileQueue.push(fileData);
+		fileQueueMutex.unlock();
+	}
+
+	//Signal completion by pushing a null object:
+	fileQueueMutex.lock();
+	fileQueue.push(0);
+	fileQueueMutex.unlock();
+}
+
+void preprocessingWorker()
+{
+	FileData *currentFileData;
+
+	while (true)
+	{
+		// Fetch next file stream:
+		fileQueueMutex.lock();
+		while (fileQueue.empty())
+		{
+			fileQueueMutex.unlock();
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			fileQueueMutex.lock();
+		}
+		currentFileData = fileQueue.front();
+		if (currentFileData == 0)// Finished?
+		{
+			fileQueueMutex.unlock();
+			break;
+		}
+		fileQueue.pop();
+		fileQueueMutex.unlock();
+
+		// Preprocess file stream:
+		currentFileData->table = new Table(&globalDictionary, currentFileData->tableId);
+		currentFileData->table->readFromStream(currentFileData->dataStream);
+		g_tables[currentFileData->tableIndex] = currentFileData->table;
+
+		// Make preprocessed data available for next pipeline worker:
+		tableQueueMutex.lock();
+		tableQueue.push(currentFileData);
+		tableQueueMutex.unlock();
+	}
+
+	//Signal completion by pushing a null object:
+	tableQueueMutex.lock();
+	tableQueue.push(0);
+	tableQueueMutex.unlock();
 }
 
 int main(int argc, const char *argv[])

@@ -3,9 +3,8 @@
 #include <algorithm>
 #include <sstream>
 
-Column::Column(int tableId, int columnId)
+Column::Column(int columnId)
 {
-	m_tableId = tableId;
 	m_columnId = columnId;
 }
 

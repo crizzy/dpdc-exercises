@@ -8,7 +8,7 @@
 class Table : public std::vector<Column*>
 {
 public:
-	Table(Dictionary *dictionary, int tableId);
+	Table(Dictionary *dictionary);
 	~Table(void);
 
 	bool readFromStream(std::istream *dataStream);
@@ -22,8 +22,6 @@ private:
 
 	unsigned int m_columnCount;
 	unsigned int m_rowCount;
-
-	int m_tableId;
 
 	inline void appendValue(std::string value, int columnIndex);
 
