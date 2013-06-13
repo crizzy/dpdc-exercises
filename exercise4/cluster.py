@@ -45,7 +45,7 @@ def clusterFile(fileName, attributeName, prefixLength = 1024):
 
 
 # run clustering:
-clusterFile("addresses.tsv", "culture");
-clusterFile("addresses.tsv", "postcode", 2);
-clusterFile("addresses.tsv", "state", 1);
-clusterFile("addresses.tsv", "given_name", 1);
+clusterFile("data/addresses/addresses.tsv", "culture");
+clusterFile("data/addresses/addresses.tsv", "postcode", 2);
+clusterFile("data/addresses/addresses.tsv", "state", 1);
+clusterFile("data/addresses/addresses.tsv", "given_name", 1);
