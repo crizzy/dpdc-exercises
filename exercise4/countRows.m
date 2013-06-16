@@ -1,0 +1,1 @@
+Nrows = numel(textread('/Users/Markus/Development/C++/dpdc-exercises/exercise4/data/addresses/addresses.tsv','%1c%*[^\n]'))
