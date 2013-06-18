@@ -16,7 +16,7 @@ import csv
 
 
 # prepare goldstandard evaluation
-resultsFileName = 'addresses/results.sample.tsv'
+resultsFileName = 'addresses/results.sample.pairs.tsv'
 #resultsFile = open(resultsFileName, "r")
 trueDuplicates = []
 with open('addresses/results.sample.tsv', 'rb') as csvfile:
@@ -59,13 +59,13 @@ for fileName in files:
 				perPairSum += jellyfish.jaro_distance(row1[columnIndex],row2[columnIndex])
 			perPairAvg = perPairSum / len(row1)
 			
-
 			if perPairAvg > 0.8:
-					
 				duplicate = [int(row1[0]), int(row2[0])]
 				#todo 3er combinations #maybe create manually when creating true duplicates
 				if (duplicate in trueDuplicates):
 					print '%s is similar to %s. Found in file %s. similarity measure = %f' % (row1[0], row2[0], fileName, perPairAvg)
+				#else:
+				#	print 'false positive'
 				
 	print ''	
 

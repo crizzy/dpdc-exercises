@@ -1,5 +1,5 @@
-r = open("results.sample.tsv", "r")
-w = open("results.sample.pairs.tsv", "w")
+r = open("addresses/results.sample.tsv", "r")
+w = open("addresses/results.sample.pairs.tsv", "w")
 
 line = r.readline()
 while len(line) > 0:
