@@ -29,7 +29,23 @@ with open('addresses/results.sample.tsv', 'rb') as csvfile:
 # todo: sort and down there seek in sorted list
 
 
-cluster = ['culture', 'state', 'given_name' 'post_code'] # todo: not finished yet: relate to index so 1 column less has to be compared
+
+wekaFile = open('weka/culture.arff', 'w')
+#todo header
+
+
+#columnIndices = {"id": 0, "culture": 1, "sex": 2, "age": 3, "date_of_birth": 4, "title": 5, "given_name": 6, "surname": 7, "state": 8, "suburb": 9, "postcode": 10, "street_number": 11, "address_1": 12, "address_2": 13, "phone_number": 14}
+#cluster = {"culture": 1, "date_of_birth": 4, "state": 8, "postcode": 10} #given
+# todo: iterated over cluster folder
+
+wekaFile.write("@relation 'dpdc-ex4'\n")
+wekaFile.write("@attribute id1 real\n")
+wekaFile.write("@attribute id2 real\n")
+wekaFile.write("@attribute jaroAvg real\n")
+wekaFile.write("@attribute levenshteinSum real\n")
+wekaFile.write("@attribute class {0,1}\n")
+wekaFile.write("@data\n")
+
 
 
 mypath = "./clusters/culture/" 
@@ -52,22 +68,46 @@ for fileName in files:
 	
 	#print "Building table done."
 
+
 	for index1, row1 in enumerate(table):
-		for index2, row2 in enumerate(table[index1:]): 
-			perPairSum = 0
-			for columnIndex in range(len(row1)):
-				perPairSum += jellyfish.jaro_distance(row1[columnIndex],row2[columnIndex])
-			perPairAvg = perPairSum / len(row1)
+
+
+		for index2, row2 in enumerate(table[index1+1:]): 
+			jaroSum = 0
+			levenshteinSum = 0
+			for columnIndex in range(1,len(row1)): #skips id column
+				firstWord = row1[columnIndex]
+				secondWord = row2[columnIndex]
+				jaroSum += jellyfish.jaro_distance(firstWord, secondWord)
+				levenshteinSum += 1 - jellyfish.levenshtein_distance(firstWord, secondWord) / max(len(firstWord), len(secondWord))
+
+			jaroAvg = jaroSum / len(row1)
+			levenshteinAvg = levenshteinSum / len(row1)
 			
-			if perPairAvg > 0.8:
-				duplicate = [int(row1[0]), int(row2[0])]
+			duplicate = [int(row1[0]), int(row2[0])]
+
+			wekaRow = row1[0] + "," + row2[0] + "," + str(jaroAvg) + "," + str(levenshteinAvg) + ","
+
+			
+
+			if (duplicate in trueDuplicates):
+				wekaRow += "1\n"
+			else:
+				wekaRow += "0\n"
+
+			wekaFile.write(wekaRow)
+
+
+			
+			#	duplicate = [int(row1[0]), int(row2[0])]
 				#todo 3er combinations #maybe create manually when creating true duplicates
-				if (duplicate in trueDuplicates):
-					print '%s is similar to %s. Found in file %s. similarity measure = %f' % (row1[0], row2[0], fileName, perPairAvg)
+			#if jaroAvg > 0.8:
+			#	if (duplicate in trueDuplicates):
+			#		print '%s is similar to %s. Found in file %s. jaroDistance avg measure = %f' % (row1[0], row2[0], fileName, jaroAvg)
 				#else:
 				#	print 'false positive'
 				
-	print ''	
+	#print ''	
 
 	
 
