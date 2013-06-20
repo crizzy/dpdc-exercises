@@ -31,7 +31,8 @@ def clusterFile(fileName, attributeName, prefixLength = 1024):
 	# parse the input data:
 	value = ""
 	line = file.readline()
-	while len(line) > 0:
+	#while len(line) > 0:
+	for i in xrange(100000):
 		value = line.split("\t")[columnIndex].strip().replace('|','1').replace(':','')[0:prefixLength]
 		if not value in clusterfiles:
 			clusterfiles[value] = open("./clusters/" + attributeName + "/" + value + ".tsv", "w")

@@ -17,9 +17,9 @@ import csv
 
 # prepare goldstandard evaluation
 resultsFileName = 'addresses/results.sample.pairs.tsv'
-#resultsFile = open(resultsFileName, "r")
+resultsFile = open(resultsFileName, "r")
 trueDuplicates = []
-with open('addresses/results.sample.tsv', 'rb') as csvfile:
+with open('addresses/results.sample.pairs.tsv', 'rb') as csvfile:
 	spamreader = csv.reader(csvfile, delimiter='\t')
 	for row in spamreader:
 		newRow = []
