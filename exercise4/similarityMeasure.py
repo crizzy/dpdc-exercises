@@ -30,22 +30,16 @@ with open('addresses/results.sample.pairs.tsv', 'rb') as csvfile:
 
 
 
-wekaFile = open('weka/culture.arff', 'w')
-#todo header
-
 
 #columnIndices = {"id": 0, "culture": 1, "sex": 2, "age": 3, "date_of_birth": 4, "title": 5, "given_name": 6, "surname": 7, "state": 8, "suburb": 9, "postcode": 10, "street_number": 11, "address_1": 12, "address_2": 13, "phone_number": 14}
 #cluster = {"culture": 1, "date_of_birth": 4, "state": 8, "postcode": 10} #given
 # todo: iterated over cluster folder
 
-wekaFile.write("@relation 'dpdc-ex4'\n")
-wekaFile.write("@attribute id1 real\n")
-wekaFile.write("@attribute id2 real\n")
-wekaFile.write("@attribute jaroAvg real\n")
-wekaFile.write("@attribute levenshteinSum real\n")
-wekaFile.write("@attribute class {0,1}\n")
-wekaFile.write("@data\n")
 
+tp = 0
+fp = 0
+fn = 0
+tn = 0
 
 
 mypath = "./clusters/culture/" 
@@ -86,31 +80,50 @@ for fileName in files:
 			
 			duplicate = [int(row1[0]), int(row2[0])]
 
-			wekaRow = row1[0] + "," + row2[0] + "," + str(jaroAvg) + "," + str(levenshteinAvg) + ","
+			#wekaRow = row1[0] + "," + row2[0] + "," + str(jaroAvg) + "," + str(levenshteinAvg) + ","
 
 			
 
-			if (duplicate in trueDuplicates):
-				wekaRow += "1\n"
-			else:
-				wekaRow += "0\n"
-
-			wekaFile.write(wekaRow)
-
+			
 
 			
-			#	duplicate = [int(row1[0]), int(row2[0])]
-				#todo 3er combinations #maybe create manually when creating true duplicates
-			#if jaroAvg > 0.8:
-			#	if (duplicate in trueDuplicates):
-			#		print '%s is similar to %s. Found in file %s. jaroDistance avg measure = %f' % (row1[0], row2[0], fileName, jaroAvg)
-				#else:
-				#	print 'false positive'
-				
-	#print ''	
+			isDuplicateInReal = duplicate in trueDuplicates
+			if jaroAvg > 0.763689: # we think it is duplicate
+				if isDuplicateInReal:
+					print 'true positive: %s is similar to %s. Found in file %s. jaroDistance avg measure = %f' % (row1[0], row2[0], fileName, jaroAvg)
+					tp += 1
+				else:
+					print 'false positive'
+					fp += 1
+			else: # we think it is not a duplicate		
+				if isDuplicateInReal:
+					print 'false negative %s is similar to %s. Found in file %s. jaroDistance avg measure = %f' % (row1[0], row2[0], fileName, jaroAvg)
+					fn += 1
+				else:
+					#print 'true negative'
+					tn += 1
+		
 
-	
 
+	print "true positives:  " + str(tp)
+	print "false positives: " + str(fp)
+	print "false negatives: " + str(fn)
+	print "true negatives:  " + str(tn)	
+
+	tp = float(tp)
+	fp = float(fp)
+	fn = float(fn)
+	tn = float(tn)
+
+	precision = tp/(tp+fp)
+	recall = tp/(tp + fn)
+	fmeasure = 2 * precision * recall / (precision + recall)
+
+	print "precision: " + str(precision)
+	print "recall: " + str(recall)
+	print "fmeasure: " + str(fmeasure)
+
+	print ''
 
 
 
