@@ -1,12 +1,18 @@
 import os
 
 # map attribute names to column indices:
-columnIndices = {"id": 0, "culture": 1, "sex": 2, "age": 3, "date_of_birth": 4, "title": 5, "given_name": 6, "surname": 7, "state": 8, "suburb": 9, "postcode": 10, "street_number": 11, "address_1": 12, "address_2": 13, "phone_number": 14}
+ci = {"id": 0, "culture": 1, "sex": 2, "age": 3, "date_of_birth": 4, "title": 5, "given_name": 6, "surname": 7, "state": 8, "suburb": 9, "postcode": 10, "street_number": 11, "address_1": 12, "address_2": 13, "phone_number": 14}
 
-def clusterFile(fileName, attributeName, prefixLength = 1024):
+def clusterFile(fileName, attributeNames, prefixLength = 1024):
+	
+	columnIndices = []
 	
 	# get the column index for this attribute:
-	columnIndex = columnIndices[attributeName]
+	for attributeName in attributeNames:
+		columnIndices.append(ci[attributeName])
+		
+	# join attribute names to a single specifier:
+	attributeNamesStr = '_'.join(attributeNames)
 	
 	# open the file:
 	file = open(fileName, "r")
@@ -16,36 +22,40 @@ def clusterFile(fileName, attributeName, prefixLength = 1024):
 		os.makedirs("./clusters_complete")
 	
 	# check if this cluster group has already been created:
-	if os.path.exists("./clusters_complete/" + attributeName):
-		print "Skipping " + attributeName
+	if os.path.exists("./clusters_complete/" + attributeNamesStr):
+		print "Skipping " + attributeNamesStr
 		return
 		
-	print "Clustering " + attributeName
+	print "Clustering " + attributeNamesStr
 	
 	# create a directory for the new cluster group:
-	os.makedirs("./clusters_complete/" + attributeName)
+	os.makedirs("./clusters_complete/" + attributeNamesStr)
 	
 	# create a dictionary which assigns each attribute value to a file handle:
-	clusterfiles = {}
+	clusters = {}
 	
 	# parse the input data:
 	value = ""
 	line = file.readline()
 	while len(line) > 0:
-		value = line.split("\t")[columnIndex].strip().replace('|','1').replace(':','')[0:prefixLength]
-		if not value in clusterfiles:
-			clusterfiles[value] = open("./clusters_complete/" + attributeName + "/" + value + ".tsv", "w")
-		clusterfiles[value].write(line)
+	#for i in xrange(100000):
+		values = []
+		for columnIndex in columnIndices:
+			values.append(line.split("\t")[columnIndex].strip().replace('|','1').replace(':','')[0:prefixLength])
+		value = '_'.join(values)
+		if not value in clusters:
+			clusters[value] = []
+		clusters[value].append(line)
 		line = file.readline()
-
-
-
-
-
-
+		
+	for clusterName, cluster in clusters.iteritems():
+		w = open("./clusters_complete/" + attributeNamesStr + "/" + clusterName.replace('?','') + ".tsv", "w")
+		for line in cluster:
+			w.write(line)
+		w.close()
 
 # run clustering:
-clusterFile("addresses/addresses.tsv", "culture");
-clusterFile("addresses/addresses.tsv", "postcode", 2);
-clusterFile("addresses/addresses.tsv", "state", 1);
-clusterFile("addresses/addresses.tsv", "given_name", 1);
+clusterFile("addresses/addresses.tsv", ["culture", "given_name"], 2)
+#clusterFile("addresses/addresses.tsv", "postcode", 2);
+#clusterFile("addresses/addresses.tsv", "state", 1);
+#clusterFile("addresses/addresses.tsv", "given_name", 1);

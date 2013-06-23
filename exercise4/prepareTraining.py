@@ -17,32 +17,34 @@ random.seed()
 ci = {"id": 0, "culture": 1, "sex": 2, "age": 3, "date_of_birth": 4, "title": 5, "given_name": 6, "surname": 7, "state": 8, "suburb": 9, "postcode": 10, "street_number": 11, "address_1": 12, "address_2": 13, "phone_number": 14}
 
 def similarityMeasures(row1, row2):
-	#jaro_sum = 0
+	jaro_sum = 0
 	jaro_winkler_sum = 0
-	#levenshtein_sum = 0
+	levenshtein_sum = 0
 	damerau_levenshtein_sum = 0
 	
 	for columnIndex in range(1,15): #skips id column
 		a = row1[columnIndex]
 		b = row2[columnIndex]
-		#jaro_sum += jellyfish.jaro_distance(a, b)
+		jaro_sum += jellyfish.jaro_distance(a, b)
 		jaro_winkler_sum += jellyfish.jaro_winkler(a, b)
-		#levenshtein_sum += 1 - jellyfish.levenshtein_distance(a, b) / float(max(len(a), len(b)))
+		levenshtein_sum += 1 - jellyfish.levenshtein_distance(a, b) / float(max(len(a), len(b)))
 		damerau_levenshtein_sum += 1 - jellyfish.damerau_levenshtein_distance(a, b) / float(max(len(a), len(b)))
 
-	return "%.6f,%.6f" % (
-		#jaro_sum / 14.0,
+	return "%.6f,%.6f,%.6f,%.6f" % (
+		jaro_sum / 14.0,
 		jaro_winkler_sum / 14.0,
-		#levenshtein_sum / 14.0,
+		levenshtein_sum / 14.0,
 		damerau_levenshtein_sum / 14.0)
+		
+clusterName = "culture_given_name"
 
-wekaFile = open('weka/culture.arff', 'w')
+wekaFile = open('weka/' + clusterName + '.arff', 'w')
 wekaFile.write("@relation 'dpdc-ex4'\n")
 #wekaFile.write("@attribute id1 real\n")
 #wekaFile.write("@attribute id2 real\n")
-#wekaFile.write("@attribute jaro_avg real\n")
+wekaFile.write("@attribute jaro_avg real\n")
 wekaFile.write("@attribute jaro_winkler_avg real\n")
-#wekaFile.write("@attribute levenshtein_avg real\n")
+wekaFile.write("@attribute levenshtein_avg real\n")
 wekaFile.write("@attribute damerau_levenshtein_avg real\n")
 
 wekaFile.write("@attribute is_duplicate {0,1}\n")
@@ -71,7 +73,7 @@ with open('addresses/results.sample.pairs.tsv', 'rb') as gold_standard_file:
 		true_pairs.append([int(pair[0]), int(pair[1])])
 
 # add some negative examples to the training corpus:
-mypath = "./clusters/culture/" 
+mypath = "./clusters/" + clusterName + "/" 
 files = [ f for f in listdir(mypath) if isfile(join(mypath,f)) ]
 for fileName in files:
 	if fileName == ".tsv":
