@@ -93,7 +93,7 @@ for fileName in files:
 					print 'true positive: %s is similar to %s. Found in file %s. jaroDistance avg measure = %f' % (row1[0], row2[0], fileName, jaroAvg)
 					tp += 1
 				else:
-					print 'false positive'
+					#print 'false positive'
 					fp += 1
 			else: # we think it is not a duplicate		
 				if isDuplicateInReal:
@@ -123,7 +123,7 @@ for fileName in files:
 	print "recall: " + str(recall)
 	print "fmeasure: " + str(fmeasure)
 
-	print ''
+	print '###############################################################'
 
 
 
