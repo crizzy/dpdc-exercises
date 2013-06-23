@@ -17,6 +17,12 @@ while not finished:
 				pairs[pos1] = list(set(pairs[pos1]) | set(pairs[pos2]))
 				pairs[pos2] = []
 				finished = False
+	currentIndex = 0
+	while currentIndex < len(pairs):
+		if pairs[currentIndex] == []:
+			del pairs[currentIndex]
+			continue
+		currentIndex += 1
 
 for pair in pairs:
 	if len(pair) > 0:
