@@ -1,0 +1,50 @@
+=== Run information ===
+
+Scheme:weka.classifiers.rules.JRip -F 3 -N 2.0 -O 2 -S 1
+Relation:     dpdc-ex4-weka.filters.unsupervised.attribute.Remove-R1-2
+Instances:    112316
+Attributes:   3
+              jaroAvg
+              levenshteinSum
+              class
+Test mode:10-fold cross-validation
+
+=== Classifier model (full training set) ===
+
+JRIP rules:
+===========
+
+(jaroAvg >= 0.75584) and (jaroAvg >= 0.78163) => class=1 (726.0/3.0)
+(jaroAvg >= 0.75053) and (levenshteinSum >= 0.59354) and (jaroAvg >= 0.76767) => class=1 (9.0/1.0)
+(jaroAvg >= 0.75584) and (levenshteinSum >= 0.61696) => class=1 (5.0/1.0)
+ => class=0 (111576.0/5.0)
+
+Number of Rules : 4
+
+
+Time taken to build model: 20.53 seconds
+
+=== Stratified cross-validation ===
+=== Summary ===
+
+Correctly Classified Instances      112296               99.9822 %
+Incorrectly Classified Instances        20                0.0178 %
+Kappa statistic                          0.9864
+Mean absolute error                      0.0002
+Root mean squared error                  0.0127
+Relative absolute error                  1.9062 %
+Root relative squared error             15.6945 %
+Total Number of Instances           112316     
+
+=== Detailed Accuracy By Class ===
+
+               TP Rate   FP Rate   Precision   Recall  F-Measure   ROC Area  Class
+                 1         0.012      1         1         1          0.994    0
+                 0.988     0          0.985     0.988     0.987      0.994    1
+Weighted Avg.    1         0.012      1         1         1          0.994
+
+=== Confusion Matrix ===
+
+      a      b   <-- classified as
+ 111565     11 |      a = 0
+      9    731 |      b = 1
