@@ -1,0 +1,67 @@
+=== Run information ===
+
+Scheme:weka.classifiers.rules.JRip -F 3 -N 2.0 -O 2 -S 1
+Relation:     dpdc-ex4
+Instances:    110828
+Attributes:   19
+              jaro_avg
+              jaro_winkler_avg
+              levenshtein_avg
+              damerau_levenshtein_avg
+              jaro1
+              jaro2
+              jaro3
+              jaro4
+              jaro5
+              jaro6
+              jaro7
+              jaro8
+              jaro9
+              jaro10
+              jaro11
+              jaro12
+              jaro13
+              jaro14
+              is_duplicate
+Test mode:3-fold cross-validation
+
+=== Classifier model (full training set) ===
+
+JRIP rules:
+===========
+
+(jaro_avg >= 0.828424) and (damerau_levenshtein_avg >= 0.730869) => is_duplicate=1 (696.0/12.0)
+(jaro_avg >= 0.821857) and (jaro12 >= 0.83683) => is_duplicate=1 (31.0/3.0)
+(jaro_avg >= 0.830184) and (jaro14 >= 0.924908) => is_duplicate=1 (11.0/1.0)
+(jaro9 >= 0.867133) and (jaro_avg >= 0.804137) and (levenshtein_avg >= 0.635941) => is_duplicate=1 (16.0/1.0)
+ => is_duplicate=0 (110074.0/3.0)
+
+Number of Rules : 5
+
+
+Time taken to build model: 285.4 seconds
+
+=== Stratified cross-validation ===
+=== Summary ===
+
+Correctly Classified Instances      110795               99.9702 %
+Incorrectly Classified Instances        33                0.0298 %
+Kappa statistic                          0.9777
+Mean absolute error                      0.0004
+Root mean squared error                  0.0171
+Relative absolute error                  3.3254 %
+Root relative squared error             21      %
+Total Number of Instances           110828     
+
+=== Detailed Accuracy By Class ===
+
+               TP Rate   FP Rate   Precision   Recall  F-Measure   ROC Area  Class
+                 1         0.016      1         1         1          0.99     0
+                 0.984     0          0.972     0.984     0.978      0.99     1
+Weighted Avg.    1         0.016      1         1         1          0.99 
+
+=== Confusion Matrix ===
+
+      a      b   <-- classified as
+ 110067     21 |      a = 0
+     12    728 |      b = 1

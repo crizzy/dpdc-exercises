@@ -30,15 +30,22 @@ def similarityMeasures(row1, row2):
 		levenshtein_sum += 1 - jellyfish.levenshtein_distance(a, b) / float(max(len(a), len(b)))
 		damerau_levenshtein_sum += 1 - jellyfish.damerau_levenshtein_distance(a, b) / float(max(len(a), len(b)))
 
-	return "%.6f,%.6f,%.6f,%.6f" % (
+	returnV =  "%.6f,%.6f,%.6f,%.6f" % (
 		jaro_sum / 14.0,
 		jaro_winkler_sum / 14.0,
 		levenshtein_sum / 14.0,
 		damerau_levenshtein_sum / 14.0)
 		
+	for i in range(1,15):
+		returnV += ",%.6f" % (jellyfish.jaro_distance(row1[i], row2[i]))
+
+	return returnV
+
+
+	
 clusterName = "culture_given_name"
 
-wekaFile = open('weka/' + clusterName + '.arff', 'w')
+wekaFile = open('weka/' + clusterName + '_jaroAttributs.arff', 'w')
 wekaFile.write("@relation 'dpdc-ex4'\n")
 #wekaFile.write("@attribute id1 real\n")
 #wekaFile.write("@attribute id2 real\n")
@@ -46,6 +53,10 @@ wekaFile.write("@attribute jaro_avg real\n")
 wekaFile.write("@attribute jaro_winkler_avg real\n")
 wekaFile.write("@attribute levenshtein_avg real\n")
 wekaFile.write("@attribute damerau_levenshtein_avg real\n")
+
+for i in range(1,15):
+	wekaFile.write("@attribute jaro%d real\n" % i)
+
 
 wekaFile.write("@attribute is_duplicate {0,1}\n")
 wekaFile.write("@data\n")
@@ -73,7 +84,7 @@ with open('addresses/results.sample.pairs.tsv', 'rb') as gold_standard_file:
 		true_pairs.append([int(pair[0]), int(pair[1])])
 
 # add some negative examples to the training corpus:
-mypath = "./clusters/" + clusterName + "/" 
+mypath = "./clusters_complete/" + clusterName + "/" 
 files = [ f for f in listdir(mypath) if isfile(join(mypath,f)) ]
 for fileName in files:
 	if fileName == ".tsv":
