@@ -1,5 +1,5 @@
 r = open("results.pairs.tsv", "r")
-w = open("test.tsv", "w")
+w = open("test2.tsv", "w")
 
 pairs =[]
 line = r.readline()
