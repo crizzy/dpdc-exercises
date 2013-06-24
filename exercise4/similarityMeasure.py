@@ -42,7 +42,7 @@ fn = 0
 tn = 0
 
 
-mypath = "./clusters/culture/" 
+mypath = "./clusters_complete/culture_given_name/" 
 files = [ f for f in listdir(mypath) if isfile(join(mypath,f)) ]
 for fileName in files:
 	if fileName == ".tsv":
@@ -104,7 +104,7 @@ for fileName in files:
 					tn += 1
 		
 
-
+	#not exactly true because I don't compare across clusters
 	print "true positives:  " + str(tp)
 	print "false positives: " + str(fp)
 	print "false negatives: " + str(fn)

@@ -1,0 +1,46 @@
+=== Run information ===
+
+Scheme:weka.classifiers.lazy.IBk -K 5 -W 0 -A "weka.core.neighboursearch.LinearNNSearch -A \"weka.core.EuclideanDistance -R first-last\""
+Relation:     dpdc-ex4
+Instances:    110881
+Attributes:   5
+              jaro_avg
+              jaro_winkler_avg
+              levenshtein_avg
+              damerau_levenshtein_avg
+              is_duplicate
+Test mode:3-fold cross-validation
+
+=== Classifier model (full training set) ===
+
+IB1 instance-based classifier
+using 5 nearest neighbour(s) for classification
+
+
+Time taken to build model: 0.01 seconds
+
+=== Stratified cross-validation ===
+=== Summary ===
+
+Correctly Classified Instances      110841               99.9639 %
+Incorrectly Classified Instances        40                0.0361 %
+Kappa statistic                          0.9726
+Mean absolute error                      0.0005
+Root mean squared error                  0.0178
+Relative absolute error                  3.6899 %
+Root relative squared error             21.8333 %
+Total Number of Instances           110881     
+
+=== Detailed Accuracy By Class ===
+
+               TP Rate   FP Rate   Precision   Recall  F-Measure   ROC Area  Class
+                 1         0.032      1         1         1          0.992    0
+                 0.968     0          0.978     0.968     0.973      0.992    1
+Weighted Avg.    1         0.032      1         1         1          0.992
+
+=== Confusion Matrix ===
+
+      a      b   <-- classified as
+ 110125     16 |      a = 0
+     24    716 |      b = 1
+
